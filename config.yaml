@@ -1,0 +1,66 @@
+# ARE Strategy Configuration - Q2 2026
+metadata:
+  analyst_name: "David Lyu"
+  report_title: "Institutional Alpha Risk Engine (ARE) Dashboard"
+  strategy_id: "ALPHA-GROWTH-2026"
+
+# The "Master List" for the Select Universe dropdown
+universe:
+  core: [XEQT.TO]
+  active_growth: [CLML.TO]
+  active_em: [REMD.NE]
+  intl_hedged: [VEF.TO]
+  us_tech: [MSFT, GOOG, SNDK]
+  cad_value: [XDIV.TO]
+  risk_balancers: [KILO.TO,]
+
+  benchmarks:
+    - XAW.TO
+    - SPY
+    - XIU.TO
+
+# Default selections when the app loads
+defaults:
+  selected_portfolio:
+    - XEQT.TO
+    - CLML.TO
+    - XDIV.TO
+    - VEF.TO
+    - REMD.NE
+    - MSFT
+    - GOOG
+    - KILO.TO
+  benchmark: "SPY"
+  start_date: "2024-01-01"
+
+
+# Strategic Asset Allocation (SAA) with Box Constraints
+constraints:
+  XEQT.TO: {min: 0.15, max: 0.30, target: 0.25}
+  CLML.TO: {min: 0.20, max: 0.30, target: 0.25}
+  REMD.NE: {min: 0.05, max: 0.15, target: 0.08}
+  VEF.TO:  {min: 0.05, max: 0.15, target: 0.09}
+  MSFT:    {min: 0.05, max: 0.20, target: 0.15}
+  GOOG:    {min: 0.05, max: 0.20, target: 0.10}
+  XDIV.TO: {min: 0.03, max: 0.10, target: 0.03}
+  KILO.TO: {min: 0.04, max: 0.08, target: 0.06}
+
+# Hyperparameters for Risk Engines
+parameters:
+  risk_free_rate: 0.04
+  confidence_level: 0.95
+  leverage_allowed: false
+  usd_cad_proxy: 1.37
+  l2_lambda: 0.1  # Shrinkage to keep weights near target
+  risk_aversion: 1  # For quadratic utility optimization; more aggressive = lower value, more conservative = higher value
+
+# External Tickers for Additional Analysis
+external_tickers:
+  - MU
+  - AVGO
+  - AMD
+  - NVDA
+  - INTC
+  - GOOG
+  - XCHP.TO
+  - FINN.NE
