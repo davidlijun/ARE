@@ -1,18 +1,29 @@
+# Standard library
+import datetime
+import sys
 from pathlib import Path
 
-import streamlit as st
-import pandas as pd
+# Third-party libraries
 import numpy as np
-import yfinance as yf
+import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
-from sklearn.covariance import LedoitWolf
 import statsmodels.api as sm
-from pypfopt import black_litterman, risk_models, BlackLittermanModel, EfficientFrontier, objective_functions
-import datetime
-from frontier_plots import plot_institutional_frontier
+import streamlit as st
+import yfinance as yf
 import yaml
-import sys
+from sklearn.covariance import LedoitWolf
+from pypfopt import (
+    black_litterman,
+    risk_models,
+    BlackLittermanModel,
+    EfficientFrontier,
+    objective_functions,
+)
+
+# Local modules
+from frontier_plots import plot_institutional_frontier
+
 # Add the parent directory to sys.path
 sys.path.append(str(Path(__file__).resolve().parent.parent))
 # Prefer setting PYTHONPATH or using a package structure with __init__.py files.
