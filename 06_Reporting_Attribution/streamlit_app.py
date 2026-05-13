@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -10,6 +12,11 @@ from pypfopt import black_litterman, risk_models, BlackLittermanModel, Efficient
 import datetime
 from frontier_plots import plot_institutional_frontier
 import yaml
+import sys
+# Add the parent directory to sys.path
+sys.path.append(str(Path(__file__).resolve().parent.parent))
+# Prefer setting PYTHONPATH or using a package structure with __init__.py files.
+
 from risk_engine import AlphaRiskEngine
 from rs_trend import calculate_mansfield_rs, monitor_mean_reversion, calculate_rs_bollinger_bands, get_rs_signals, detect_rs_hook
 
