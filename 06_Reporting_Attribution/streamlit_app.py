@@ -125,7 +125,7 @@ st.write(f"Risk-Free Rate (Annualized Proxy): {rf:.1%}")
 
 # Display returns data preview
 with st.expander("📊 Returns Data Preview"):
-    st.dataframe(returns.tail(3), use_container_width=True)
+    st.dataframe(returns.tail(3), width='stretch')
     st.caption(f"Data shape: {returns.shape[0]} periods × {returns.shape[1]} assets | Starting: {returns.index[0].date()}")
 
 
@@ -187,7 +187,7 @@ with tab2:
             "Note: Using Ledoit-Wolf Shrinkage to prevent Implied Correlation > 1.0.")
         fig_corr = px.imshow(shrunk_corr, text_auto=".2f", aspect="auto",
                              color_continuous_scale='RdBu_r', origin='lower')
-        st.plotly_chart(fig_corr, use_container_width=True)
+        st.plotly_chart(fig_corr, width='stretch')
 
     with col_b:
         st.subheader("Tail Risk (CVaR)")
@@ -315,7 +315,7 @@ with tab3:
         title=f"Contagion Map: Response to {target_asset} {shock_magnitude:+.0%} Shock"
     )
     fig_impact.update_layout(template="plotly_dark")
-    st.plotly_chart(fig_impact, use_container_width=True)
+    st.plotly_chart(fig_impact, width='stretch')
 
     # 5. Analyst Commentary
     st.subheader("Consultant's Scenario Audit")
@@ -449,7 +449,7 @@ with tab5:
     # rets from Black-Litterman, cov from Tab 2, weights from optimization
     fig_frontier = plot_institutional_frontier(
         rets, shrunk_cov, cleaned_weights)
-    st.plotly_chart(fig_frontier, use_container_width=True)
+    st.plotly_chart(fig_frontier, width='stretch')
 
 
 # --- TAB 6: CURRENCY EXPOSURE & FX SENSITIVITY ---
@@ -498,7 +498,7 @@ with tab6:
         fig_fx = px.pie(fx_pie_data, values='Exposure', names='Currency',
                         color_discrete_sequence=['#1f77b4', '#ff7f0e'],
                         hole=0.4)
-        st.plotly_chart(fig_fx, use_container_width=True)
+        st.plotly_chart(fig_fx, width='stretch')
 
     with col2:
         st.subheader("FX Sensitivity Analysis")
@@ -565,7 +565,7 @@ with tab7:
         yaxis_title="Price Ratio",
         template="plotly_dark"
     )
-    st.plotly_chart(fig_rs, use_container_width=True)
+    st.plotly_chart(fig_rs, width='stretch')
 
     # 5. The "Rotation Alert"
     st.subheader("Statistical Regime Signal")
@@ -728,7 +728,7 @@ with tab8:
     fig_quad.add_vline(x=0, line_dash="dash", line_color="gray")
     fig_quad.update_traces(textposition='top center')
     fig_quad.update_layout(template="plotly_dark")
-    st.plotly_chart(fig_quad, use_container_width=True)
+    st.plotly_chart(fig_quad, width='stretch')
 
     st.divider()
 
@@ -774,7 +774,7 @@ with tab8:
         template="plotly_dark",
         hovermode="x unified"
     )
-    st.plotly_chart(fig_bands, use_container_width=True)
+    st.plotly_chart(fig_bands, width='stretch')
 
     # 3. Consultant's Interpretation of the Bands
     st.info(f"""
@@ -904,7 +904,7 @@ with tab9:
             st.dataframe(
                 df_live.style.map(style_live_report, subset=[
                                        'Day Change (%)', 'Rel. to Bench (%)']),
-                use_container_width=True,
+                width='stretch',
                 hide_index=True
             )
 
