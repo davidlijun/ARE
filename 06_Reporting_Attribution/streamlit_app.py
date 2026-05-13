@@ -12,6 +12,13 @@ from frontier_plots import plot_institutional_frontier
 import yaml
 from risk_engine import AlphaRiskEngine
 from rs_trend import calculate_mansfield_rs, monitor_mean_reversion, calculate_rs_bollinger_bands, get_rs_signals, detect_rs_hook
+
+# --- CONSTANTS ---
+PORTFOLIO_VALUE = 10_000 
+RS_WINDOW = 50 
+RS_LOOKBACK_WINDOW = 200 
+ANNUAL_TRADING_DAYS = 252 
+
 # --- CONFIGURATION & STYLING ---
 st.set_page_config(page_title="Alpha Risk Engine (ARE)", layout="wide")
 
@@ -38,12 +45,6 @@ master_universe = (
     cfg['universe']['risk_balancers']
 )
 
-# selected_tickers = st.sidebar.multiselect(
-#     "Select Universe for Attribution",
-#     options=master_universe,
-#     default=cfg['defaults']['selected_portfolio']
-# )
-
 selected_benchmark = st.sidebar.selectbox(
     "Reference Benchmark",
     options=cfg['universe']['benchmarks'],
@@ -55,7 +56,8 @@ st.sidebar.header("ARE Selection Panel")
 
 # 1. Initialize 'external_tickers' in session state if it doesn't exist
 if 'external_tickers' not in st.session_state:
-    st.session_state['external_tickers'] = cfg['external_tickers']  # Start with any pre-defined tickers in config
+    # Start with any pre-defined tickers in config
+    st.session_state['external_tickers'] = cfg['external_tickers']
 
 # 2. Add External Ticker Input
 with st.sidebar.expander("➕ Add External Symbol", expanded=False):
@@ -81,14 +83,13 @@ master_universe = list(master_universe + st.session_state['external_tickers'])
 if st.sidebar.button("Clear External Tickers"):
     st.session_state['external_tickers'] = []
     st.rerun()
-    
+
 # 5. Multiselect for Active Analysis
 selected_tickers = st.sidebar.multiselect(
     "Select Universe for Attribution",
     options=sorted(master_universe),
     default=cfg['defaults']['selected_portfolio']
 )
-
 
 
 @st.cache_data
@@ -139,7 +140,7 @@ shrunk_cov, shrunk_corr = get_robust_metrics(returns)
 # --- APP TABS ---
 tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9 = st.tabs(
     ["Performance Attribution", "Risk Report", "Scenario Stress Test", "Factor Attribution", "Efficient Frontier", "CURRENCY EXPOSURE & FX SENSITIVITY", "Rebalancing & Execution",
-     "Relative Strength Signals", "RS Statistical Bands"])
+     "Relative Strength Signals", "Market Trend"])
 
 # --- TAB 1: ALPHA ATTRIBUTION ---
 with tab1:
@@ -188,7 +189,7 @@ with tab2:
     with col_c:
         st.subheader("Volatility & Beta")
         vol_beta_df = pd.DataFrame({
-            'Volatility (Annualized)': returns.std() * np.sqrt(252),
+            'Volatility (Annualized)': returns.std() * np.sqrt(ANNUAL_TRADING_DAYS),
             'Beta vs Benchmark': returns.corr()[selected_benchmark]
         }).sort_values(by='Beta vs Benchmark', ascending=False)
         st.table(vol_beta_df.style.format(
@@ -212,7 +213,7 @@ with tab3:
     def get_current_weights():
         if 'weights_dict' in st.session_state:
             return st.session_state['weights_dict']
-        return {k: v['target'] for k, v in cfg['constraints'].items()}|{t: 0.05 for t in selected_tickers if t not in cfg['constraints']}
+        return {k: v['target'] for k, v in cfg['constraints'].items()} | {t: 0.05 for t in selected_tickers if t not in cfg['constraints']}
 
     # Now, in any tab, you just call:
     current_weights = get_current_weights()
@@ -281,7 +282,7 @@ with tab3:
             "Ticker": asset,
             "Estimated Impact (%)": impact,
             # Based on optimized weights
-            "Dollar Impact": 4800 * (current_weights[asset] * impact)
+            "Dollar Impact": PORTFOLIO_VALUE * (current_weights[asset] * impact)
         })
 
     impact_df = pd.DataFrame(impact_results)
@@ -291,8 +292,8 @@ with tab3:
     st.divider()
     m1, m2 = st.columns(2)
     m1.metric("Total Portfolio Shock Impact", f"{total_portfolio_impact:+.2%}")
-    m2.metric("Est. NAV Change ($4,800 Principal)",
-              f"${4800 * total_portfolio_impact:+,.2f} CAD")
+    m2.metric(f"Est. NAV Change (${PORTFOLIO_VALUE:,} Principal)",
+              f"${PORTFOLIO_VALUE * total_portfolio_impact:+,.2f} CAD")
 
     # Bar chart of individual asset contagion
     fig_impact = px.bar(
@@ -463,11 +464,15 @@ with tab6:
 
     # 2. Calculate Portfolio-Wide USD Exposure
     # We use the weights from the Optimization/Input section
-    weights_dict = {t: 1/len(selected_tickers)
-                    for t in selected_tickers}  # Placeholder weights
+    if not selected_tickers:
+        st.warning("Please select tickers in the sidebar.")
+        usd_exposure = 0
+    else:
+        weights_dict = {t: 1/len(selected_tickers)
+                        for t in selected_tickers}  # Placeholder weights
 
-    usd_exposure = sum(weights_dict[t] * fx_map.get(t, 0)
-                       for t in selected_tickers)
+        usd_exposure = sum(weights_dict[t] * fx_map.get(t, 0)
+                           for t in selected_tickers)
     cad_exposure = 1.0 - usd_exposure
 
     col1, col2 = st.columns([1, 2])
@@ -489,7 +494,7 @@ with tab6:
 
         # Calculate impact on CAD-denominated NAV
         portfolio_impact = usd_exposure * (fx_move / 100)
-        nav_change = 4800 * portfolio_impact
+        nav_change = PORTFOLIO_VALUE * portfolio_impact
 
         st.metric("Portfolio Impact (CAD Value)",
                   f"{portfolio_impact:+.2%}",
@@ -531,9 +536,8 @@ with tab7:
 
     # 3. Statistical Z-Score (The 'Extreme' indicator)
     # Moving Average and Standard Deviation of the ratio
-    window = 50
-    ma = ratio.rolling(window=window).mean()
-    std = ratio.rolling(window=window).std()
+    ma = ratio.rolling(window=RS_WINDOW).mean()
+    std = ratio.rolling(window=RS_WINDOW).std()
     z_score = (ratio - ma) / std
 
     # 4. Plotting the RS Ratio
@@ -634,14 +638,16 @@ with tab8:
 
         # Add mean-reversion monitoring (e.g., if MRS is above 20% but slope turns negative, it may signal an impending reversal)
         reversion_status = monitor_mean_reversion(mrs_series, rs_data[t])
-        
+
         # bollinger band detector for mean reversion and hook detection
         # 1. Run Detectors
         has_hook = detect_rs_hook(mrs_series)
-        sma_t, upper_t, lower_t, rs_series_t = calculate_rs_bollinger_bands(mrs_series)
-        
-        is_near_lower_band = mrs_series.ffill().iloc[-1] <= (lower_t.ffill().iloc[-1] * 1.02) # Within 2% of band
-        
+        sma_t, upper_t, lower_t, rs_series_t = calculate_rs_bollinger_bands(
+            mrs_series)
+
+        is_near_lower_band = mrs_series.ffill(
+        ).iloc[-1] <= (lower_t.ffill().iloc[-1] * 1.02)  # Within 2% of band
+
         # 2. Determine Hook Status
         hook_status = ""
         if has_hook and mrs_series.ffill().iloc[-1] > 0:
@@ -652,18 +658,18 @@ with tab8:
             hook_status = "🔥 PARABOLIC"
         else:
             hook_status = "Steady"
-        
-        # bubble alert: If the price is more than 50% above the 200-day moving average, 
+
+        # bubble alert: If the price is more than 50% above the 200-day moving average,
         # it may be overextended and at risk of a sharp pullback.
-        # print(rs_data[t].head())
-        price_200ma = rs_data[t].ffill().rolling(window=200).mean()
-        dist_from_200ma = (rs_data[t].ffill().iloc[-1] / price_200ma.ffill().iloc[-1] - 1) * 100
+        price_200ma = rs_data[t].ffill().rolling(window=RS_LOOKBACK_WINDOW).mean()
+        dist_from_200ma = (rs_data[t].ffill().iloc[-1] /
+                           price_200ma.ffill().iloc[-1] - 1) * 100
         # print(dist_from_200ma)
         if dist_from_200ma > 50:
             bubble_alert = f"🚨 BURRY ALERT: Overextended: {dist_from_200ma:.2f}%"
         else:
             bubble_alert = "Safe"
-    
+
         rs_results.append({
             "Ticker": t,
             "RS Score": round(current_score, 2),
@@ -682,13 +688,15 @@ with tab8:
     def color_signal(val):
         color = 'red' if 'Avoid' in val else 'green' if 'Accumulation' in val else 'orange' if 'Early' in val else 'blue'
         return f'color: {color}; font-weight: bold'
-    
-    def style_hook(val):
-        if '🪝' in val: return 'background-color: #004d00; color: white; font-weight: bold'
-        if '⚓' in val: return 'background-color: #4d2600; color: white; font-weight: bold'
-        if '🔥' in val: return 'color: #ff4d4d; font-weight: bold'
-        return ''
 
+    def style_hook(val):
+        if '🪝' in val:
+            return 'background-color: #004d00; color: white; font-weight: bold'
+        if '⚓' in val:
+            return 'background-color: #4d2600; color: white; font-weight: bold'
+        if '🔥' in val:
+            return 'color: #ff4d4d; font-weight: bold'
+        return ''
 
     st.subheader("Cross-Sectional RS Ranking")
     st.table(rs_df.style.map(
@@ -764,6 +772,167 @@ with tab8:
     * **The Zero Line:** If RS is within bands but crosses 0, the regime has changed.
     """)
 
+# --- TAB 9: LIVE MARKET EXECUTION TERMINAL ---
+# Module-level variables for monitoring
+all_monitor_tickers = []
+gap_df = None
+
+def fetch_premarket_and_gap(tickers):
+    """Fetch pre-market and gap analysis for given tickers."""
+    if not tickers:
+        return None
+    try:
+        # Fetch 1 day of 1-minute data including extended hours
+        data = yf.download(tickers, period="1d", interval="1m", prepost=True, progress=False)
+        
+        # We also need the previous close to calculate the 'Gap'
+        hist = yf.download(tickers, period="2d", interval="1d", progress=False)['Close']
+        
+        results = []
+        for t in tickers:
+            try:
+                # 1. Previous Day Close
+                prev_close = hist[t].iloc[-2]
+                
+                # 2. Today's First Price (Pre-market start or Open)
+                today_data = data['Adj Close'][t].dropna()
+                
+                # Pre-market price (last point)
+                current_extended = today_data.iloc[-1]
+                
+                # 3. Calculate Gap
+                gap_pct = ((today_data.iloc[0] / prev_close) - 1) * 100
+                
+                results.append({
+                    "Ticker": t,
+                    "Prev Close": round(prev_close, 2),
+                    "Pre/Live Price": round(current_extended, 2),
+                    "Overnight Gap (%)": round(gap_pct, 2),
+                    "Session Performance (%)": round(((current_extended / today_data.iloc[0]) - 1) * 100, 2)
+                })
+            except Exception:
+                continue
+        
+        return pd.DataFrame(results) if results else None
+    except Exception:
+        return None
+
+with tab9:
+    st.header("🎛️ Live Market Execution Terminal")
+    st.markdown("""
+    **Objective:** Real-time monitoring of Price vs. Benchmark. 
+    Use this to identify 'Slippage' and 'Relative Strength' during intraday surges.
+    """)
+
+    if not selected_tickers:
+        st.warning("Please select tickers in the sidebar to monitor prices.")
+    else:
+        # 1. Fetch Data for Selected Universe + Benchmark
+        globals()['all_monitor_tickers'] = list(
+            set(selected_tickers + [selected_benchmark]))
+
+        # Refreshes every 60 seconds for "Near Real-Time"
+        @st.cache_data(ttl=60)
+        def fetch_live_prices(tickers):
+            # Fetching 2 days to ensure we have the 'Previous Close' for delta calculation
+            data = yf.download(tickers, period="2d",
+                               interval="1m", progress=False)
+            return data['Close']
+
+        try:
+            monitor_list = globals().get('all_monitor_tickers', [])
+            live_data = fetch_live_prices(monitor_list)
+
+            # 2. Process Metrics
+            price_report = []
+            benchmark_change = 0
+
+            # Calculate Benchmark change first for relative comparison
+            bench_current = live_data[selected_benchmark].iloc[-1]
+            # Start of the 2d window
+            bench_prev = live_data[selected_benchmark].iloc[0]
+            benchmark_change = (bench_current / bench_prev - 1) * 100
+
+            for t in monitor_list:
+                current_p = live_data[t].iloc[-1]
+                # Last known valid price from previous day
+                prev_p = live_data[t].dropna().iloc[0]
+                change_abs = current_p - prev_p
+                change_pct = (change_abs / prev_p) * 100
+                rel_perf = change_pct - benchmark_change  # Alpha check
+
+                price_report.append({
+                    "Ticker": t,
+                    "Current Price": round(current_p, 2),
+                    "Day Change (%)": round(change_pct, 2),
+                    "Rel. to Bench (%)": round(rel_perf, 2),
+                    "Status": "🔥 Outperforming" if rel_perf > 0 else "❄️ Lagging"
+                })
+
+            # 3. Visualization: Metrics Row
+            st.subheader(f"System Pulse vs. {selected_benchmark}")
+            col1, col2, col3 = st.columns(3)
+            col1.metric(f"Benchmark: {selected_benchmark}",
+                        f"{bench_current:.2f}", f"{benchmark_change:.2f}%")
+            col2.metric("Portfolio Sentiment",
+                        "BULLISH" if benchmark_change > 0.3 else "NEUTRAL" if benchmark_change >= -0.3 else "BEARISH")
+            col3.write(
+                f"**Last Update:** {datetime.datetime.now().strftime('%H:%M:%S')} EST")
+
+            # 4. Display Professional Price Table
+            df_live = pd.DataFrame(price_report).sort_values(
+                by="Day Change (%)", ascending=False)
+
+            def style_live_report(val):
+                if isinstance(val, float):
+                    color = 'green' if val > 0 else 'red'
+                    return f'color: {color}'
+                return ''
+
+            st.dataframe(
+                df_live.style.map(style_live_report, subset=[
+                                       'Day Change (%)', 'Rel. to Bench (%)']),
+                use_container_width=True,
+                hide_index=True
+            )
+
+        except Exception as e:
+            st.error(f"Execution Terminal Error: {e}")
+    # --- Streamlit Display ---
+    st.subheader("🏁 Pre-Market & Gap Analysis")
+    st.info("The 'Gap' represents institutional overnight sentiment re-pricing.")
+
+    if st.button("Refresh Pre-Market/Gap Audit"):
+        monitor_list = globals().get('all_monitor_tickers', [])
+        globals()['gap_df'] = fetch_premarket_and_gap(monitor_list)
+        if globals()['gap_df'] is not None:
+            st.success("Gap data refreshed.")
+        else:
+            st.error("Unable to fetch gap data.")
+    
+    # Display gap table if data is available
+    gap_data = globals().get('gap_df')
+    if gap_data is not None:
+        # Highlight significant gaps (> 2%)
+        def highlight_gaps(val):
+            color = 'red' if val < -2 else 'green' if val > 2 else 'white'
+            return f'color: {color}; font-weight: bold'
+        
+        st.table(gap_data.style.map(highlight_gaps, subset=['Overnight Gap (%)']))
+    else:
+        st.info("Click 'Refresh Pre-Market/Gap Audit' to load gap analysis.")
+    # 5. Tactical Consultant Action
+    st.divider()
+    st.subheader("Consultant's Intraday Audit")
+
+    if benchmark_change > 1.5:
+        st.warning(
+            "🚨 **Gamma Warning:** Market is rolling up >1.5%. Check for 'Melt-up' exhaustion in your INTC and MU satellites.")
+    elif benchmark_change < -1.5:
+        st.error(
+            "📉 **Liquidation Alert:** Systemic sell-off detected. Monitor KILO.TO for safe-haven decoupling.")
+    else:
+        st.info("Regime: Normal Intraday Variance. No emergency rebalancing required.")
 # --- FOOTER: DECISION LOG ---
 st.divider()
 st.subheader("Decision Log Entry")

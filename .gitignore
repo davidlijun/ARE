@@ -1,0 +1,16 @@
+.DS_Store
+*.pyc
+.devcontainer
+.vscode
+__pycache__
+.ipynb_checkpoints
+*.log
+*.tmp
+*.swp
+node_modules/
+.env
+.idea/
+*.o
+*.exe
+dist/
+build/
