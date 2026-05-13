@@ -6,3 +6,4 @@ lxml
 plotly
 matplotlib
 scikit-learn
+statsmodels
