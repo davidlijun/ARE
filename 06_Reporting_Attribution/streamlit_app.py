@@ -24,6 +24,12 @@ from pypfopt import (
 # Local modules
 from frontier_plots import plot_institutional_frontier
 
+# Import data utilities from 02_Data_Pipeline
+import sys
+import os
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '02_Data_Pipeline'))
+from data_utils import get_daily_returns, get_price_history, get_price_history_with_benchmark, get_premarket_data, get_live_intraday
+
 # Add the parent directory to sys.path
 sys.path.append(str(Path(__file__).resolve().parent.parent))
 # Prefer setting PYTHONPATH or using a package structure with __init__.py files.
@@ -110,16 +116,8 @@ selected_tickers = st.sidebar.multiselect(
 )
 
 
-@st.cache_data
-def load_data(tickers, benchmark, start):
-    # Combine selected universe with benchmark
-    all_tickers = list(set(tickers + [benchmark]))
-    data = yf.download(all_tickers, start=start, auto_adjust=True)['Close']
-    return data.pct_change(fill_method=None).dropna()
-
-
 # Use start_date from config
-returns = load_data(
+returns = get_daily_returns(
     selected_tickers,
     selected_benchmark,
     cfg['defaults']['start_date']
@@ -550,8 +548,7 @@ with tab7:
 
     # 1. Fetch Data
     tickers = ["FINN.NE", "XCHP.TO"]
-    data = yf.download(tickers, period="2y", interval="1d",
-                       auto_adjust=True)['Close']
+    data = get_price_history(tickers, period="2y", interval="1d")
 
     # 2. Calculate Ratio
     # We use a base-100 normalization to see the divergence clearly
@@ -617,14 +614,8 @@ with tab8:
     # 2. Process RS Signals
     rs_results = []
 
-    # Download 2 years of data for the 52-week SMA
-    @st.cache_data(ttl=3600)
-    def fetch_rs_data(tickers, bench):
-        return yf.download(tickers + [bench], period="2y", auto_adjust=True)['Close']
-
-    rs_data = fetch_rs_data(rs_universe, rs_benchmark)
-
-    # print(rs_data.head())
+    # Fetch 2 years of data for the 52-week SMA
+    rs_data = get_price_history_with_benchmark(rs_universe, rs_benchmark, period="2y", interval="1d")
 
     for t in rs_universe:
         mrs_series, slope_series = calculate_mansfield_rs(
@@ -804,13 +795,12 @@ def fetch_premarket_and_gap(tickers):
     """Fetch pre-market and gap analysis for given tickers."""
     if not tickers:
         return None
+    
+    data, hist = get_premarket_data(tickers)
+    if data is None or hist is None:
+        return None
+    
     try:
-        # Fetch 1 day of 1-minute data including extended hours
-        data = yf.download(tickers, period="1d", interval="1m", prepost=True, progress=False)
-        
-        # We also need the previous close to calculate the 'Gap'
-        hist = yf.download(tickers, period="2d", interval="1d", progress=False)['Close']
-        
         results = []
         for t in tickers:
             try:
@@ -854,17 +844,10 @@ with tab9:
         globals()['all_monitor_tickers'] = list(
             set(selected_tickers + st.session_state.external_tickers + [selected_benchmark]))
 
-        # Refreshes every 60 seconds for "Near Real-Time"
-        @st.cache_data(ttl=60)
-        def fetch_live_prices(tickers):
-            # Fetching 2 days to ensure we have the 'Previous Close' for delta calculation
-            data = yf.download(tickers, period="2d",
-                               interval="1m", progress=False)
-            return data['Close']
-
+        # Fetch live prices (refreshes every 60 seconds)
         try:
             monitor_list = globals().get('all_monitor_tickers', [])
-            live_data = fetch_live_prices(monitor_list)
+            live_data = get_live_intraday(monitor_list, period="2d")
 
             # 2. Process Metrics
             price_report = []
