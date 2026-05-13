@@ -877,6 +877,8 @@ with tab9:
             benchmark_change = (bench_current / bench_prev - 1) * 100
 
             for t in monitor_list:
+                if t == selected_benchmark:
+                    continue  # Skip benchmark in the individual report
                 current_p = live_data[t].iloc[-1]
                 # Last known valid price from previous day
                 prev_p = live_data[t].dropna().iloc[0]
