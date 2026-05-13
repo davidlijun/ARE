@@ -841,7 +841,7 @@ with tab9:
     else:
         # 1. Fetch Data for Selected Universe + Benchmark
         globals()['all_monitor_tickers'] = list(
-            set(selected_tickers + [selected_benchmark]))
+            set(selected_tickers + st.session_state.external_tickers + [selected_benchmark]))
 
         # Refreshes every 60 seconds for "Near Real-Time"
         @st.cache_data(ttl=60)
