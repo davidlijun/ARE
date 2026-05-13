@@ -5,3 +5,4 @@ ta-lib
 lxml
 plotly
 matplotlib
+sklearn
