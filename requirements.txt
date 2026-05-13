@@ -7,5 +7,5 @@ plotly
 matplotlib
 scikit-learn
 statsmodels
-pypfopt
+pyportfolioopt
 frontier_plots
