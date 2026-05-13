@@ -7,3 +7,5 @@ plotly
 matplotlib
 scikit-learn
 statsmodels
+pypfopt
+frontier_plots
