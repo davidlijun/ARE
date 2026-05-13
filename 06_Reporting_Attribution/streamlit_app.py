@@ -113,7 +113,7 @@ returns = load_data(
     selected_benchmark,
     cfg['defaults']['start_date']
 )
-# print(returns.head())
+
 # --- DISPLAY METADATA ---
 st.title(cfg['metadata']['report_title'])
 st.caption(
@@ -122,6 +122,11 @@ st.caption(
 # Access parameters for math
 rf = cfg['parameters']['risk_free_rate']
 st.write(f"Risk-Free Rate (Annualized Proxy): {rf:.1%}")
+
+# Display returns data preview
+with st.expander("📊 Returns Data Preview"):
+    st.dataframe(returns.tail(3), use_container_width=True)
+    st.caption(f"Data shape: {returns.shape[0]} periods × {returns.shape[1]} assets | Starting: {returns.index[0].date()}")
 
 
 market_caps = {ticker: yf.Ticker(ticker).info.get(
