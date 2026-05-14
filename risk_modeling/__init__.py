@@ -1,5 +1,5 @@
 """
-03_Risk_Modeling module - Risk analysis and relative strength utilities.
+risk_modeling module - Risk analysis and relative strength utilities.
 """
 
 from .risk_engine import AlphaRiskEngine

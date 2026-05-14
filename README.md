@@ -23,12 +23,12 @@ The engine is organized into six functional modules:
 ```Table
 /ARE_Project_Root
 
-├── 01_Alpha_Research/         # Fundamental deep-dives (GIL Mergers, SNDK Cycle Analysis)
-├── 02_Data_Pipeline/          # Python scripts for IBKR TWS API & YFinance data ingestion
-├── 03_Risk_Modeling/          # Factor-based risk engines (Fama-French, Ledoit-Wolf, CVaR)
-├── 04_Optimization/           # Black-Litterman & Mean-Variance Optimization models
-├── 05_Governance_IPS/         # Investment Policy Statement (IPS) & Decision Logs (Minutes)
-└── 06_Reporting_Attribution/  # GIPS-compliant performance & Brinson attribution reports
+├── alpha_research/            # Fundamental deep-dives (GIL Mergers, SNDK Cycle Analysis)
+├── data_pipeline/             # Python scripts for IBKR TWS API & YFinance data ingestion
+├── risk_modeling/             # Factor-based risk engines (Fama-French, Ledoit-Wolf, CVaR)
+├── optimization/              # Black-Litterman & Mean-Variance Optimization models
+├── governance_ips/            # Investment Policy Statement (IPS) & Decision Logs (Minutes)
+└── reporting_attribution/     # GIPS-compliant performance & Brinson attribution reports
 ````
 
 Quantitative Methodologies
@@ -58,7 +58,7 @@ Operational Governance
 
 * Execution Desk: All trades are executed via broker utilizing Single Login System (SLS) for Joint/Individual account consolidation.
 
-* Decision Logging: Every rebalancing event requires a written entry in the `05_Governance_IPS` folder to mitigate behavioral bias.
+* Decision Logging: Every rebalancing event requires a written entry in the `governance_ips` folder to mitigate behavioral bias.
 
 * Tax Efficiency: Prioritization of "In-Kind" transfers to minimize capital gains drag on long-term "winners."
 
@@ -75,5 +75,5 @@ How to use this README
 -----------------------------
 
 1. **Identity:** As an analyst, this doc is your "Anchor." When the market is volatile (like **MSFT**'s current weakness), read Section 1 and Section 4 to remind yourself of the strategy.
-2. **Governance:** If you decide to sell **MCD**, you must first record the reason in the `05_Governance_IPS` folder mentioned in the README.
+2. **Governance:** If you decide to sell **MCD**, you must first record the reason in the `governance_ips` folder mentioned in the README.
 3. **Onboarding:** If you ever decide to hire a junior analyst or a partner, this README serves as the "Instruction Manual" for how your fund operates.

@@ -1,7 +1,7 @@
 import streamlit as st
 import plotly.graph_objects as go
 
-from Commodity import load_gold, compute_fibonacci, trend_slope
+from alpha_research import load_gold, compute_fibonacci, trend_slope
 
 st.set_page_config(layout="wide", page_title="Gold Fibonacci Quant View")
 

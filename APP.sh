@@ -1,1 +1,1 @@
-streamlit run 06_Reporting_Attribution/streamlit_app.py
+streamlit run reporting_attribution/streamlit_app.py

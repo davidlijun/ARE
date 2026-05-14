@@ -24,18 +24,12 @@ from pypfopt import (
 # Local modules
 from frontier_plots import plot_institutional_frontier
 
-# Import data utilities from 02_Data_Pipeline
-import sys
-import os
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '02_Data_Pipeline'))
-from data_utils import get_daily_returns, get_price_history, get_price_history_with_benchmark, get_premarket_data, get_live_intraday
-
 # Add the parent directory to sys.path
 sys.path.append(str(Path(__file__).resolve().parent.parent))
 # Prefer setting PYTHONPATH or using a package structure with __init__.py files.
 
-from risk_engine import AlphaRiskEngine
-from rs_trend import calculate_mansfield_rs, monitor_mean_reversion, calculate_rs_bollinger_bands, get_rs_signals, detect_rs_hook
+from data_pipeline import get_daily_returns, get_price_history, get_price_history_with_benchmark, get_premarket_data, get_live_intraday
+from risk_modeling import AlphaRiskEngine, calculate_mansfield_rs, monitor_mean_reversion, calculate_rs_bollinger_bands, get_rs_signals, detect_rs_hook
 
 # --- CONSTANTS ---
 PORTFOLIO_VALUE = 10_000 
@@ -947,6 +941,6 @@ st.subheader("Decision Log Entry")
 note = st.text_area("Record today's rationale (GIPS Governance):",
                     placeholder="e.g., Retained GIL despite volatility due to Hanes synergy targets.")
 if st.button("Save Entry"):
-    with open("05_Governance_IPS/decision_log.txt", "a") as f:
+    with open("governance_ips/decision_log.txt", "a") as f:
         f.write(f"\n{pd.Timestamp.now()}: {note}")
-    st.success("Entry saved to /05_Governance_IPS/")
+    st.success("Entry saved to /governance_ips/")

@@ -1,5 +1,5 @@
 """
-02_Data_Pipeline module - Centralized data fetching and processing utilities.
+data_pipeline module - Centralized data fetching and processing utilities.
 """
 
 from .data_utils import (
