@@ -10,7 +10,11 @@ import plotly.express as px
 import plotly.graph_objects as go
 import statsmodels.api as sm
 import streamlit as st
-import yfinance as yf
+import appdirs as ad
+from pathlib import Path
+# Force yfinance to use /tmp for caching
+ad.user_cache_dir = lambda *args: "/tmp"
+Path("/tmp/yfinance").mkdir(exist_ok=True)
 import yaml
 from sklearn.covariance import LedoitWolf
 from pypfopt import (

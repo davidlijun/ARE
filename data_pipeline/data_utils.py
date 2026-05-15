@@ -5,6 +5,12 @@ Provides cached functions for various data types and timeframes.
 
 import streamlit as st
 import pandas as pd
+import appdirs as ad
+from pathlib import Path
+# Force yfinance to use /tmp for caching
+ad.user_cache_dir = lambda *args: "/tmp"
+Path("/tmp/yfinance").mkdir(exist_ok=True)
+
 import yfinance as yf
 
 
