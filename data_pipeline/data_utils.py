@@ -2,17 +2,18 @@
 Data utilities for ARE dashboard - consolidated yfinance data fetching.
 Provides cached functions for various data types and timeframes.
 """
-
+import os
 import streamlit as st
 import pandas as pd
 import appdirs as ad
 from pathlib import Path
-# Force yfinance to use /tmp for caching
-ad.user_cache_dir = lambda *args: "/tmp"
-Path("/tmp/yfinance").mkdir(exist_ok=True)
-
 import yfinance as yf
+# Create a valid path in your Windows Temp directory
+cache_path = os.path.join(os.environ['TEMP'], 'yfinance')
+if not os.path.exists(cache_path):
+    os.makedirs(cache_path)
 
+yf.set_tz_cache_location(cache_path)
 
 @st.cache_data(ttl=3600)
 def get_daily_returns(tickers, benchmark, start_date):

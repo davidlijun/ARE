@@ -1,5 +1,6 @@
 # Standard library
 import datetime
+import os
 import sys
 from pathlib import Path
 
@@ -11,10 +12,7 @@ import plotly.graph_objects as go
 import statsmodels.api as sm
 import streamlit as st
 import appdirs as ad
-from pathlib import Path
-# Force yfinance to use /tmp for caching
-ad.user_cache_dir = lambda *args: "/tmp"
-Path("/tmp/yfinance").mkdir(exist_ok=True)
+import yfinance as yf
 import yaml
 from sklearn.covariance import LedoitWolf
 from pypfopt import (
@@ -25,6 +23,11 @@ from pypfopt import (
     objective_functions,
 )
 
+# Create a valid path in your Windows Temp directory
+cache_path = os.path.join(os.environ['TEMP'], 'yfinance')
+if not os.path.exists(cache_path):
+    os.makedirs(cache_path)
+yf.set_tz_cache_location(cache_path)
 # Local modules
 from frontier_plots import plot_institutional_frontier
 
