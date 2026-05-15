@@ -9,3 +9,4 @@ scikit-learn
 statsmodels
 pyportfolioopt
 pyyaml
+appdirs
