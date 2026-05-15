@@ -9,7 +9,7 @@ import appdirs as ad
 from pathlib import Path
 import yfinance as yf
 # Create a valid path in your Windows Temp directory
-cache_path = os.path.join(os.environ['TEMP'], 'yfinance')
+cache_path = os.path.join(os.environ['TEMP'], 'yfinance') if os.name == 'nt' else ad.user_cache_dir("yfinance")
 if not os.path.exists(cache_path):
     os.makedirs(cache_path)
 
