@@ -123,7 +123,10 @@ returns = get_daily_returns(
     selected_benchmark,
     cfg['defaults']['start_date']
 )
-
+if returns.empty:
+    st.error("No data available for the selected tickers and date range. Please adjust your selection.")
+    st.stop()
+    
 # --- DISPLAY METADATA ---
 st.title(cfg['metadata']['report_title'])
 st.caption(
