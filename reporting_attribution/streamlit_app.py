@@ -12,6 +12,7 @@ import plotly.graph_objects as go
 import statsmodels.api as sm
 import streamlit as st
 import appdirs as ad
+import requests
 import yfinance as yf
 import yaml
 from sklearn.covariance import LedoitWolf
@@ -22,6 +23,26 @@ from pypfopt import (
     EfficientFrontier,
     objective_functions,
 )
+
+# Apply default request headers for all requests sessions so yfinance uses headers
+DEFAULT_REQUEST_HEADERS = {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
+    'Accept-Language': 'en-US,en;q=0.9',
+    'Accept-Encoding': 'gzip, deflate, br',
+    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+}
+
+_original_requests_session_request = requests.Session.request
+
+def _requests_session_request_with_headers(self, method, url, *args, **kwargs):
+    headers = kwargs.get('headers', {}) or {}
+    if not isinstance(headers, dict):
+        headers = dict(headers)
+    merged_headers = {**DEFAULT_REQUEST_HEADERS, **headers}
+    kwargs['headers'] = merged_headers
+    return _original_requests_session_request(self, method, url, *args, **kwargs)
+
+requests.Session.request = _requests_session_request_with_headers
 
 # Create a valid path in your Windows Temp directory
 cache_path = os.path.join(os.environ['TEMP'], 'yfinance') if os.name == 'nt' else ad.user_cache_dir("yfinance")
