@@ -4,11 +4,8 @@ Provides cached functions for various data types and timeframes.
 """
 import os
 import streamlit as st
-import pandas as pd
 import appdirs as ad
-from pathlib import Path
 import yfinance as yf
-import requests
 # Create a valid path in your Windows Temp directory
 cache_path = os.path.join(os.environ['TEMP'], 'yfinance') if os.name == 'nt' else ad.user_cache_dir("yfinance")
 if not os.path.exists(cache_path):
@@ -16,13 +13,6 @@ if not os.path.exists(cache_path):
 
 yf.set_tz_cache_location(cache_path)
 
-# Create a requests session with common headers to reduce blocking by remote servers
-_session = requests.Session()
-_session.headers.update({
-    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko)'
-                  ' Chrome/115.0 Safari/537.36',
-    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-})
 
 
 @st.cache_data(ttl=3600)
@@ -39,7 +29,7 @@ def get_daily_returns(tickers, benchmark, start_date):
         DataFrame of daily returns
     """
     all_tickers = list(set(tickers + [benchmark]))
-    data = yf.download(all_tickers, start=start_date, auto_adjust=True, progress=False, session=_session)['Close']
+    data = yf.download(all_tickers, start=start_date, auto_adjust=True, progress=False)['Close']
     return data.pct_change(fill_method=None).dropna()
 
 
@@ -56,7 +46,7 @@ def get_price_history(tickers, period="2y", interval="1d"):
     Returns:
         DataFrame of closing prices
     """
-    data = yf.download(tickers, period=period, interval=interval, auto_adjust=True, progress=False, session=_session)['Close']
+    data = yf.download(tickers, period=period, interval=interval, auto_adjust=True, progress=False)['Close']
     return data
 
 
@@ -75,7 +65,7 @@ def get_price_history_with_benchmark(tickers, benchmark, period="2y", interval="
         DataFrame of closing prices including benchmark
     """
     all_tickers = tickers + [benchmark]
-    data = yf.download(all_tickers, period=period, interval=interval, auto_adjust=True, progress=False, session=_session)['Close']
+    data = yf.download(all_tickers, period=period, interval=interval, auto_adjust=True, progress=False)['Close']
     return data
 
 
@@ -95,10 +85,10 @@ def get_premarket_data(tickers):
     
     try:
         # 1-minute data with pre/post market
-        intraday = yf.download(tickers, period="1d", interval="1m", prepost=True, progress=False, session=_session)
+        intraday = yf.download(tickers, period="1d", interval="1m", prepost=True, progress=False)
         
         # 2-day daily data for previous close
-        history = yf.download(tickers, period="2d", interval="1d", progress=False, session=_session)['Close']
+        history = yf.download(tickers, period="2d", interval="1d", progress=False)['Close']
         
         return intraday, history
     except Exception:
@@ -122,7 +112,7 @@ def get_live_intraday(tickers, period="2d"):
         return None
     
     try:
-        data = yf.download(tickers, period=period, interval="1m", progress=False, session=_session)['Close']
+        data = yf.download(tickers, period=period, interval="1m", progress=False)['Close']
         return data
     except Exception:
         return None
