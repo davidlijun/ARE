@@ -3,56 +3,12 @@ import uuid
 import streamlit as st
 import pandas as pd
 import numpy as np
-import yfinance as yf
 from numpy.linalg import inv
+from .ef_utils import market_cap
 
 deployment = 1000
 
 st.set_page_config(page_title="Professional BL Manager", layout="wide")
-
-def market_cap(tickers, anchor_ticker='XEQT.TO', anchor_weight=0.60):
-        
-    # 2. Market Weights (use actual Market Caps in production)
-
-    # Get real market caps from yfinance and compute market weights
-    market_caps = []
-    for t in tickers:
-        try:
-            info = yf.Ticker(t).info
-            mc = info.get('marketCap') or info.get('marketCap')
-            if mc is None:
-                raise KeyError
-        except Exception:
-            # fallback: use last price * sharesOutstanding if available, else np.nan
-            try:
-                print("Failed to get market cap for", t, "- trying fallback method")
-                info = yf.Ticker(t).info
-                price = info.get('previousClose') or info.get('regularMarketPrice')
-                shares = info.get('sharesOutstanding')
-                mc = price * shares if price and shares else np.nan
-            except Exception:
-                print("Failed to get fallback market cap for", t)
-                mc = np.nan
-        market_caps.append(mc)
-
-    market_caps = np.array(market_caps, dtype=float)
-    if np.isnan(market_caps).any():
-        # replace NaNs with equal small weights to avoid breaking things
-        nan_idx = np.isnan(market_caps)
-        market_caps[nan_idx] = np.nanmean(market_caps)
-    w_mkt = market_caps / np.nansum(market_caps)
-    w_mkt = pd.Series(w_mkt, index=tickers)
-    print('Market caps:')
-    print(w_mkt)
-    if anchor_ticker in tickers:
-        # Give XEQT the 'Lion's Share' as the low-vol anchor
-        w_mkt[anchor_ticker] = anchor_weight
-        # Distribute the rest equally among tactical stocks
-        remaining_weight = 1.0 - anchor_weight
-        other_tickers = [t for t in tickers if t != anchor_ticker]
-        w_mkt[other_tickers] = remaining_weight * w_mkt[other_tickers]
-        print(w_mkt)
-    return market_caps, w_mkt
 
 def black_litterman_individual(returns, views, confidences, w_mkt=None):
     """
