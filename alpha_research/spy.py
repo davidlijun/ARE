@@ -30,3 +30,4 @@ class SPYRiskEngine:
 are = SPYRiskEngine()
 status = are.evaluate_spy_trade(750, 755, 2.50, 18, 7)
 print(status)
+

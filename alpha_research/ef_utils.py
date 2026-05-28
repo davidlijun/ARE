@@ -79,6 +79,7 @@ def simulate_random_portfolios(mean_returns, cov_matrix, num_portfolios=100_000,
     normalized_weights = raw_weights / raw_weights.sum(axis=1, keepdims=True) # Normalize to sum to 1
 
     portfolio_returns = normalized_weights.dot(mean_returns.values)
+    # np.einsum is used for efficient computation of the quadratic form w^T * Cov * w for each portfolio
     portfolio_volatilities = np.sqrt(
         np.einsum("ij,jk,ik->i", normalized_weights, cov_matrix.values, normalized_weights)
     )

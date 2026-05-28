@@ -47,6 +47,8 @@ for t, mc, w in zip(tickers, market_caps, w_mkt):
     print(f"{t}: {mc:.0f} -> {w:.2%}")
 
 # 3. Step 1: Calculate Implied Equilibrium Returns (Market Wisdom)
+"""What returns must exist to justify current market weights?"""
+
 pi = delta * cov.dot(w_mkt)
 
 # 4. Step 2: Define YOUR VIEWS (The PEAD Input)
