@@ -52,5 +52,5 @@ def trade_logic():
 # 4. THE INFINITE LOOP
 while True:
     trade_logic()
-    # print("Sleeping for 60 seconds...")
+    print("Sleeping for 60 seconds...")
     ib.sleep(60)  # ib.sleep is better than time.sleep for connection stability
