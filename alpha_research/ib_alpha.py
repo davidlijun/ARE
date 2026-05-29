@@ -14,7 +14,8 @@ def trade_logic():
 
     # 1. GET DATA
     bars = ib.reqHistoricalData(contract, endDateTime='', durationStr='2 D',
-                                barSizeSetting='1 min', whatToShow='MIDPOINT', useRTH=True)
+                                barSizeSetting='1 min', whatToShow='MIDPOINT'
+                                , useRTH=False) # Get 2 days of 1-minute bars, including pre/post-market
     df = util.df(bars)
 
     # 2. CALCULATE INDICATORS
@@ -63,7 +64,9 @@ def trade_logic():
             takeProfitPrice=target_price,
             stopLossPrice=stop_price
         )
-
+        for ord in bracket:
+            ord.outsideRth = True  # Allow orders outside regular trading hours
+            
         for ord in bracket:
             ib.placeOrder(contract, ord)
     elif has_ord:
