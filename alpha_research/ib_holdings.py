@@ -4,7 +4,7 @@ import pandas as pd
 # 1. CONNECT
 # Port 7497 is for Paper Trading. ClientID can be any number.
 ib = IB()
-ib.connect('127.0.0.1', 4002, clientId=1)
+ib.connect('127.0.0.1', 4002, clientId=2)
 
 
 def show_my_account():

@@ -7,6 +7,7 @@ ib = IB()
 ib.connect('127.0.0.1', 4002, clientId=1)
 
 def trade_logic():
+    ib.reqGlobalCancel()  # Cancel any existing orders to avoid conflicts
     contract = Stock('SPY', 'SMART', 'USD')
     ib.qualifyContracts(contract)
 
