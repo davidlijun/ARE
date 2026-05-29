@@ -5,9 +5,10 @@ import pandas as pd
 # Port 7497 is for Paper Trading. ClientID can be any number.
 ib = IB()
 ib.connect('127.0.0.1', 4002, clientId=1)
+ib.reqGlobalCancel()  # Cancel any existing orders to avoid conflicts
+
 
 def trade_logic():
-    ib.reqGlobalCancel()  # Cancel any existing orders to avoid conflicts
     contract = Stock('SPY', 'SMART', 'USD')
     ib.qualifyContracts(contract)
 
@@ -15,7 +16,7 @@ def trade_logic():
     bars = ib.reqHistoricalData(contract, endDateTime='', durationStr='2 D',
                                 barSizeSetting='1 min', whatToShow='MIDPOINT', useRTH=True)
     df = util.df(bars)
-    
+
     # 2. CALCULATE INDICATORS
     df['sma9'] = df['close'].rolling(window=9).mean()
     df['sma21'] = df['close'].rolling(window=21).mean()
@@ -47,19 +48,19 @@ def trade_logic():
 
     # 5. EXECUTION LOGIC
     is_crossover = prev_9 <= prev_21 and curr_9 > curr_21
-    
+
     # Check for existing positions or pending orders
     has_pos = any(p.contract.symbol == 'SPY' for p in ib.positions())
     has_ord = any(t.contract.symbol == 'SPY' for t in ib.openTrades())
 
     if is_crossover and not has_pos and not has_ord:
         print("!!! SIGNAL MATCHED !!! Sending Bracket Order...")
-        
+
         bracket = ib.bracketOrder(
-            'BUY', 
-            10, 
-            limitPrice=curr_price, 
-            takeProfitPrice=target_price, 
+            'BUY',
+            10,
+            limitPrice=curr_price,
+            takeProfitPrice=target_price,
             stopLossPrice=stop_price
         )
 
@@ -72,7 +73,8 @@ def trade_logic():
     else:
         print("Status: Searching for crossover...")
 
+
 # Loop it
 while True:
     trade_logic()
-    ib.sleep(30) # Check every 30 seconds
+    ib.sleep(30)  # Check every 30 seconds
