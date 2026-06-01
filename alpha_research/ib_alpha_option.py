@@ -13,8 +13,13 @@ def get_atm_call(symbol):
     stock = Stock(symbol, 'SMART', 'USD')
     ib.qualifyContracts(stock)
     [ticker] = ib.reqTickers(stock)
-    current_price = ticker.marketPrice()
-
+    bid_price = ticker.bid
+    
+    # Fallback: Sometimes bid is NaN (if there are no buyers)
+    # If bid is missing, use marketPrice (midpoint) as a backup
+    entry_price = bid_price if not pd.isna(bid_price) and bid_price > 0 else ticker.marketPrice()
+    print(f"Current Mid: {ticker.marketPrice()} | My Bid Limit: {entry_price}")
+    
     # 2. Get Option Chain
     chains = ib.reqSecDefOptParams(
         stock.symbol, '', stock.secType, stock.conId)
@@ -25,7 +30,7 @@ def get_atm_call(symbol):
     expiry = chain.expirations[3]
 
     # 4. Find the Strike closest to current price
-    strike = min(chain.strikes, key=lambda x: abs(x - current_price))
+    strike = min(chain.strikes, key=lambda x: abs(x - ticker.marketPrice()))
 
     contract = Option(symbol, expiry, strike, 'C', 'SMART')
     ib.qualifyContracts(contract)
