@@ -50,7 +50,7 @@ def run_option_strategy():
 
         # Get the Option price to set the bracket
         [opt_ticker] = ib.reqTickers(call_contract)
-        opt_price = opt_ticker.marketPrice()
+        opt_price = opt_ticker.bidPrice()
 
         # CREATE THE BRACKET
         # Note: We set Profit Target at +20% and Stop at -10%

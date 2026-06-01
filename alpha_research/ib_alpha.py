@@ -4,7 +4,7 @@ import pandas as pd
 # 1. CONNECT
 # Port 7497 is for Paper Trading. ClientID can be any number.
 ib = IB()
-ib.connect('127.0.0.1', 4002, clientId=1)
+ib.connect('127.0.0.1', 4002, clientId=3)
 ib.reqGlobalCancel()  # Cancel any existing orders to avoid conflicts
 
 
@@ -13,14 +13,16 @@ def trade_logic():
     ib.qualifyContracts(contract)
 
     # 1. GET DATA
-    bars = ib.reqHistoricalData(contract, endDateTime='', durationStr='2 D',
+    bars = ib.reqHistoricalData(contract, endDateTime='', durationStr='4 D',
                                 barSizeSetting='1 min', whatToShow='MIDPOINT'
                                 , useRTH=False) # Get 2 days of 1-minute bars, including pre/post-market
+    if not bars:
+        print("No data received. Retrying...")
+        return
     df = util.df(bars)
-
     # 2. CALCULATE INDICATORS
-    df['sma9'] = df['close'].rolling(window=9).mean()
-    df['sma21'] = df['close'].rolling(window=21).mean()
+    df['sma9'] = df['close'].dropna().rolling(window=9).mean()
+    df['sma21'] = df['close'].dropna().rolling(window=21).mean()
 
     curr_price = df['close'].iloc[-1]
     curr_9 = df['sma9'].iloc[-1]
