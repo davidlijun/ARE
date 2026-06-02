@@ -1,6 +1,6 @@
 from ib_insync import *
 import pandas as pd
-from datetime import datetime, time
+from datetime import datetime, time, timedelta
 # 1. CONNECT
 # Port 7497 is for Paper Trading. ClientID can be any number.
 ib = IB()
@@ -8,7 +8,7 @@ ib.connect('127.0.0.1', 4002, clientId=10)
 ib.reqGlobalCancel()  # Cancel any existing orders to avoid conflicts
 
 
-def simulate_340_lotto(symbol='SPY'):
+def simulate_340_lotto(symbol='SPY', date='20260529'):
     stock = Stock(symbol, 'SMART', 'USD')
     ib.qualifyContracts(stock)
 
@@ -16,20 +16,33 @@ def simulate_340_lotto(symbol='SPY'):
     # Example: Looking at the end of yesterday (change the date to test others)
     bars = ib.reqHistoricalData(
         stock, 
-        endDateTime='20240603 16:00:00 US/Eastern', 
+        endDateTime=f'{date} 16:00:00 US/Eastern', 
         durationStr='1 D',
         barSizeSetting='1 min', 
         whatToShow='TRADES', 
         useRTH=True
     )
-    
+    if not bars:
+        print("No data received. Retrying...")
+        return
     df = util.df(bars)
-    
+    print(df[['date', 'open', 'high', 'low', 'close']].tail(5))  # Show last 5 bars to verify we have the right data
     # 2. Extract the price at exactly 3:40 PM (15:40)
     # Note: IBKR timestamps are often the 'end' of the bar.
     entry_row = df[df['date'].dt.strftime('%H:%M') == '15:40']
-    exit_row = df[df['date'].dt.strftime('%H:%M') == '16:00']
-    
+    exit_row = df[df['date'].dt.strftime('%H:%M') == '15:59']
+    print("\n--- Price at 3:40 PM ---")
+    if not entry_row.empty:
+        print(entry_row[['date', 'open', 'high', 'low', 'close']])
+    else:
+        print("No bar found for 3:40 PM. Check the timestamps and time zone.")
+        return
+    if not exit_row.empty:
+        print("\n--- Price at 4:00 PM ---")
+        print(exit_row[['date', 'open', 'high', 'low', 'close']])
+    else:
+        print("No bar found for 4:00 PM. Check the timestamps and time zone.")
+        return
     if not entry_row.empty and not exit_row.empty:
         entry_price = entry_row.iloc[0]['close']
         exit_price = exit_row.iloc[0]['close']
@@ -49,4 +62,13 @@ def simulate_340_lotto(symbol='SPY'):
         else:
             print(">>> Result: Option likely expired worthless due to Theta decay.")
 
-simulate_340_lotto()
+
+# Run simulations from 2026-01-01 until today (inclusive)
+start = datetime(2026, 1, 1)
+end = datetime.today()
+cur = start
+while cur.date() <= end.date():
+    test_date = cur.strftime('%Y%m%d')
+    print(f"\n\n=== Simulating for Date: {test_date} ===")
+    simulate_340_lotto(date=test_date)
+    cur += timedelta(days=1)
