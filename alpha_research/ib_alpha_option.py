@@ -32,10 +32,13 @@ def get_atm_call(symbol):
         raise Exception(f"Error getting ticker for {symbol}: {e}")
     
     bid_price = ticker.bid
+    print(f"Stock Ticker Data: bid={ticker.bid}, ask={ticker.ask}, last={ticker.last}, marketPrice={ticker.marketPrice()}")
     
+    breakpoint()  # Debug: Check ticker data before proceeding
     # Fallback: Sometimes bid is NaN (if there are no buyers)
     # If bid is missing, use marketPrice (midpoint) as a backup
     entry_price = bid_price if not pd.isna(bid_price) and bid_price > 0 else ticker.marketPrice()
+    
     print(f"Current Mid: {ticker.marketPrice()} | My Bid Limit: {entry_price}")
     
     # 2. Get Option Chain
@@ -54,8 +57,13 @@ def get_atm_call(symbol):
     strike = min(chain.strikes, key=lambda x: abs(x - ticker.marketPrice()))
     print(f"ATM Strike: {strike}")
 
-    contract = Option(symbol, expiry, strike, 'C', 'SMART')
+    contract = Option(symbol, expiry, strike, 'C', 'SMART', 'USD')
     ib.qualifyContracts(contract)
+    
+    # Validate contract was properly qualified
+    if not contract.conId or contract.conId == 0:
+        raise ValueError(f"Contract qualification failed for {symbol} {expiry} {strike}C")
+    
     return contract
 
 
@@ -104,7 +112,7 @@ def run_option_strategy():
         signal = (df['ma9'].iloc[-1] > df['ma21'].iloc[-1] and 
                   df['ma9'].iloc[-2] <= df['ma21'].iloc[-2])
         
-        if signal:
+        if True:
             # Check if we already have an active position
             if active_position:
                 print(">>> Position already active. Skipping signal.")
@@ -114,7 +122,7 @@ def run_option_strategy():
 
             try:
                 call_contract = get_atm_call('SPY')
-                print(f"Buying Call: {call_contract.localSymbol}")
+                print(f"!!!!!!!!!!Buying Call: {call_contract.localSymbol}")
 
                 # Get the Option price using subscribed market data
                 try:
@@ -122,12 +130,28 @@ def run_option_strategy():
                     if not opt_tickers or len(opt_tickers) == 0:
                         raise ValueError("No ticker data received for option contract")
                     opt_ticker = opt_tickers[0]
+                    
+                    # Debug: print available data
+                    print(f"Option Ticker Data: bid={opt_ticker.bid}, ask={opt_ticker.ask}, last={opt_ticker.last}, marketPrice={opt_ticker.marketPrice()}")
+                    
                 except Exception as e:
                     print(f"ERROR getting option ticker: {e}")
                     return
                 
-                opt_price = opt_ticker.bid if not pd.isna(opt_ticker.bid) and opt_ticker.bid > 0 else opt_ticker.marketPrice()
-                print(f"Option Mid Price: {opt_ticker.marketPrice()} | My Bid Limit: {opt_price}")
+                # Use ask price (safest for entry), fallback to bid, then marketPrice
+                if not pd.isna(opt_ticker.ask) and opt_ticker.ask > 0:
+                    opt_price = opt_ticker.ask
+                elif not pd.isna(opt_ticker.bid) and opt_ticker.bid > 0:
+                    opt_price = opt_ticker.bid
+                else:
+                    mid = opt_ticker.marketPrice()
+                    if pd.isna(mid) or mid <= 0:
+                        print("WARNING: No valid option price found - using minimum tick")
+                        opt_price = 0.01
+                    else:
+                        opt_price = mid
+                
+                print(f"Option Mid Price: {opt_ticker.marketPrice()} | My Entry Limit: {opt_price}")
                 # CREATE THE BRACKET
                 # Note: We set Profit Target at +20% and Stop at -10%
                 bracket = ib.bracketOrder(
