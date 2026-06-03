@@ -9,6 +9,7 @@ except Exception as e:
     print(f"Connection failed: {e}")
     exit()
 
+
 def get_contract_name(contract):
     """Helper to format name for Stocks, Options, and Spreads (Bags)."""
     if contract.secType == 'OPT':
@@ -18,6 +19,7 @@ def get_contract_name(contract):
         legs = "/".join([str(leg.conId) for leg in contract.comboLegs])
         return f"{contract.symbol} [SPREAD]"
     return contract.symbol
+
 
 def show_my_account():
     # Sync all orders (from TWS/API/Mobile)
@@ -32,7 +34,8 @@ def show_my_account():
     if pos:
         for p in pos:
             name = get_contract_name(p.contract)
-            print(f"{name:<20} | {p.contract.secType:<4} | {p.position:<6} | {p.avgCost:<10.2f}")
+            print(
+                f"{name:<20} | {p.contract.secType:<4} | {p.position:<6} | {p.avgCost:<10.2f}")
     else:
         print("No open positions.")
 
@@ -40,7 +43,7 @@ def show_my_account():
     print("\n" + "="*95)
     print(f"{'ID (PRNT)':<12} | {'CONTRACT':<20} | {'ACTION':<6} | {'ORD PX':<10} | {'MKT PRICE':<10} | {'STATUS'}")
     print("-" * 95)
-    
+
     trades = ib.openTrades()
     if trades:
         # Request tickers for all unique contracts (including BAGs)
@@ -52,30 +55,42 @@ def show_my_account():
                 unique_contracts.append(t.contract)
                 seen.add(contract_id)
         tickers = ib.reqTickers(*unique_contracts)
-        price_map = {ticker.contract.conId if ticker.contract.secType != 'BAG' else 0: ticker for ticker in tickers}
-        
-        # Note: BAG contracts often have conId=0 in the ticker, 
+        price_map = {ticker.contract.conId if ticker.contract.secType !=
+                     'BAG' else 0: ticker for ticker in tickers}
+
+        # Note: BAG contracts often have conId=0 in the ticker,
         # so we match BAGs manually if needed.
-        
+
         for t in trades:
             name = get_contract_name(t.contract)
             order_px = t.order.lmtPrice if t.order.orderType == 'LMT' else t.order.auxPrice
             parent = f"{t.order.orderId}({t.order.parentId})"
-            
+
             # Find the correct ticker for this contract
-            ticker = next((tick for tick in tickers if tick.contract == t.contract), None)
-            
-            mkt_px = ticker.marketPrice() if ticker else None
-            
-            # Formatting the Price
-            # Spreads (BAGS) often show a "Mid" price representing the net debit/credit
-            if mkt_px is not None and not pd.isna(mkt_px):
-                mkt_px_str = f"{mkt_px:10.2f}"
+            ticker = next(
+                (tick for tick in tickers if tick.contract == t.contract), None)
+
+            if ticker:
+                bid = ticker.bid
+                ask = ticker.ask
+
+                # --- NETTING LOGIC ---
+                # If both bid/ask exist, mid is the average.
+                # This is the "Net Price" of the spread.
+                if bid > 0 and ask > 0:
+                    mid = (bid + ask) / 2
+                else:
+                    # Fallback to marketPrice() or 0.0 if spread is wide/missing
+                    mid = ticker.marketPrice() if not pd.isna(ticker.marketPrice()) else 0.0
+
+                bid_str = f"{bid:8.2f}" if bid > 0 else "  N/A"
+                ask_str = f"{ask:8.2f}" if ask > 0 else "  N/A"
+                mid_str = f"{mid:8.2f}" if mid > 0 else " Loading.."
             else:
-                mkt_px_str = "  Loading..."
+                bid_str = ask_str = mid_str = " Loading.."
 
             print(f"{parent:<12} | {name:<20} | {t.order.action:<6} | "
-                  f"{order_px:<10.2f} | {mkt_px_str:<10} | {t.orderStatus.status}")
+                  f"{order_px:<10.2f} | {bid_str:<10} | {t.orderStatus.status}")
     else:
         print("No active orders found.")
 
@@ -88,10 +103,12 @@ def show_my_account():
         for f in fills[-5:]:
             name = get_contract_name(f.contract)
             local_time = f.execution.time.astimezone().strftime('%H:%M:%S')
-            print(f"{name:<20} | {f.execution.side:<6} | {f.execution.avgPrice:<10.2f} | {local_time}")
+            print(
+                f"{name:<20} | {f.execution.side:<6} | {f.execution.avgPrice:<10.2f} | {local_time}")
     else:
         print("No trades filled this session.")
     print("="*95 + "\n")
+
 
 show_my_account()
 ib.disconnect()
