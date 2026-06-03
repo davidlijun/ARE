@@ -44,7 +44,13 @@ def show_my_account():
     trades = ib.openTrades()
     if trades:
         # Request tickers for all unique contracts (including BAGs)
-        unique_contracts = list({t.contract for t in trades})
+        unique_contracts = []
+        seen = set()
+        for t in trades:
+            contract_id = t.contract.conId
+            if contract_id not in seen:
+                unique_contracts.append(t.contract)
+                seen.add(contract_id)
         tickers = ib.reqTickers(*unique_contracts)
         price_map = {ticker.contract.conId if ticker.contract.secType != 'BAG' else 0: ticker for ticker in tickers}
         
