@@ -93,58 +93,69 @@ def place_bracket_order(contract, action='BUY'):
 
 def run_strategy():
     connect()
-
     symbol = 'SPY'
-
-    # Check if we are already in ANY SPY option position (to avoid double-hedging)
+    
+    # 1. Position Check
     if get_active_option_qty(symbol, 'C') != 0 or get_active_option_qty(symbol, 'P') != 0:
         return
 
-    # 2. DATA ACQUISITION (5-minute bars)
+    # 2. Get Data (5-minute bars)
     stock = Stock(symbol, 'SMART', 'USD')
     ib.qualifyContracts(stock)
-
-    # Requesting 2 days to ensure enough data for the indicators
     bars = ib.reqHistoricalData(
         stock, endDateTime='', durationStr='2 D',
         barSizeSetting='5 mins', whatToShow='TRADES', useRTH=True
     )
-
-    if not bars:
-        print("Waiting for data...")
-        return
-
+    if not bars: return
     df = util.df(bars)
-
-    # 3. INDICATORS
+    
+    # 3. Indicators
     df['ema9'] = df['close'].ewm(span=9, adjust=False).mean()
     df['ema21'] = df['close'].ewm(span=21, adjust=False).mean()
     df['vwap'] = calculate_vwap(df)
-
+    
     last = df.iloc[-1]
     prev = df.iloc[-2]
 
-    print(
-        f"Price: {last.close:.2f} | EMA9: {last.ema9:.2f} | EMA21: {last.ema21:.2f} | VWAP: {last.vwap:.2f}")
+    # --- 4. DEFINE STATES (The "Alignment" Logic) ---
+    # Setup is True only when BOTH EMA and VWAP conditions are met
+    last_is_bullish = (last.ema9 > last.ema21) and (last.close > last.vwap)
+    prev_was_bullish = (prev.ema9 > prev.ema21) and (prev.close > prev.vwap)
 
-    # 4. SIGNAL LOGIC
-    bullish_cross = prev.ema9 <= prev.ema21 and last.ema9 > last.ema21
-    bearish_cross = prev.ema9 >= prev.ema21 and last.ema9 < last.ema21
+    last_is_bearish = (last.ema9 < last.ema21) and (last.close < last.vwap)
+    prev_was_bearish = (prev.ema9 < prev.ema21) and (prev.close < prev.vwap)
 
-    # --- CALL LOGIC ---
-    if bullish_cross and last.close > last.vwap:
-        print(
-            f">>> CALL SIGNAL: Price({last.close:.2f}) > VWAP({last.vwap:.2f})")
+    # Trigger only when the state switches from False to True
+    bullish_signal = last_is_bullish and not prev_was_bullish
+    bearish_signal = last_is_bearish and not prev_was_bearish
+
+    # --- 5. OPTIONAL EXTENSION FILTER ---
+    # If price is > 0.1% away from EMA21, it's considered "chasing"
+    # For SPY at $530, 0.1% is about $0.53. 
+    max_extension = 0.0010 
+    
+    def is_overextended(current_price, ema_ref):
+        extension = abs(current_price - ema_ref) / ema_ref
+        return extension > max_extension
+
+    # --- 6. EXECUTION ---
+    if bullish_signal:
+        if is_overextended(last.close, last.ema21):
+            print(f"(!) Bullish Signal Ignored: Price is overextended from EMA21.")
+            return
+            
+        print(f">>> CALL SIGNAL: Setup Aligned. Price: {last.close:.2f}")
         contract = get_atm_option(symbol, 'C')
         place_bracket_order(contract)
 
-    # --- PUT LOGIC ---
-    elif bearish_cross and last.close < last.vwap:
-        print(
-            f">>> PUT SIGNAL: Price({last.close:.2f}) < VWAP({last.vwap:.2f})")
+    elif bearish_signal:
+        if is_overextended(last.close, last.ema21):
+            print(f"(!) Bearish Signal Ignored: Price is overextended from EMA21.")
+            return
+
+        print(f">>> PUT SIGNAL: Setup Aligned. Price: {last.close:.2f}")
         contract = get_atm_option(symbol, 'P')
         place_bracket_order(contract)
-
 
 # 6. LOOP
 print("Bot started. Scanning every 60 seconds...")
