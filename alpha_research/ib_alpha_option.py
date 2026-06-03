@@ -15,17 +15,13 @@ def connect():
             print(f"✗ Connection failed: {e}")
             exit(1)
 
-def get_actual_option_position(symbol):
-    """
-    Checks the account specifically for OPTION positions 
-    on the underlying symbol, ignoring Stock (STK) positions.
-    """
+def get_active_option_qty(symbol, right):
+    """Checks for existing 'C' (Call) or 'P' (Put) positions for a symbol."""
     positions = ib.positions()
     for p in positions:
-        # Match symbol (SPY) AND security type (OPT)
-        if p.contract.symbol == symbol and p.contract.secType == 'OPT':
+        # Check symbol, check it's an option, and check if it's the right (C or P)
+        if p.contract.symbol == symbol and p.contract.secType == 'OPT' and p.contract.right == right:
             if p.position != 0:
-                print(f"Active Option Position found: {p.contract.localSymbol} ({p.position} qty)")
                 return p.position
     return 0
 
@@ -38,9 +34,8 @@ def calculate_vwap(df):
     
     tp = (day_df['high'] + day_df['low'] + day_df['close']) / 3
     return (tp * day_df['volume']).cumsum() / day_df['volume'].cumsum()
-
-def get_atm_call(symbol):
-    """Finds the 0DTE ATM Call Option."""
+def get_atm_option(symbol, right):
+    """Finds the 0DTE ATM Option (C or P)."""
     stock = Stock(symbol, 'SMART', 'USD')
     ib.qualifyContracts(stock)
     tickers = ib.reqTickers(stock)
@@ -48,32 +43,47 @@ def get_atm_call(symbol):
     market_price = tickers[0].marketPrice()
 
     chains = ib.reqSecDefOptParams(stock.symbol, '', stock.secType, stock.conId)
-    # Filter for SMART exchange chain
     chain = next(c for c in chains if c.exchange == 'SMART')
     
-    # 0DTE is the first available expiration
-    expiry = chain.expirations[0]
-    # Find strike closest to current market price
+    expiry = chain.expirations[0] # 0DTE
     strike = min(chain.strikes, key=lambda x: abs(x - market_price))
     
-    contract = Option(symbol, expiry, strike, 'C', 'SMART')
+    contract = Option(symbol, expiry, strike, right, 'SMART')
     ib.qualifyContracts(contract)
-    
-    # Validate contract was properly qualified
-    if not contract.conId or contract.conId == 0:
-        raise ValueError(f"Contract qualification failed for {symbol} {expiry} {strike}C")
-    
     return contract
+
+def place_bracket_order(contract, action='BUY'):
+    """Calculates entry and places bracket: 20% Profit / 10% Stop."""
+    opt_ticker = ib.reqTickers(contract)[0]
+    ib.sleep(1)
+    price = opt_ticker.marketPrice()
+    
+    if np.isnan(price) or price <= 0:
+        print(f"Invalid price for {contract.localSymbol}. Aborting.")
+        return
+
+    bracket = ib.bracketOrder(
+        action, 1,
+        limitPrice=round(price, 2),
+        takeProfitPrice=round(price * 1.20, 2),
+        stopLossPrice=round(price * 0.90, 2)
+    )
+
+    for o in bracket:
+        ib.placeOrder(contract, o)
+    print(f"✓ {right_full} Bracket Placed: {contract.localSymbol} @ {price}")
+
 
 def run_strategy():
     connect()
     
     symbol = 'SPY'
     
-    # Check if we already have a position
-    if get_actual_option_position(symbol) != 0:
-        # print(f"Already holding {symbol}. Skipping entry scan...")
+
+    # Check if we are already in ANY SPY option position (to avoid double-hedging)
+    if get_active_option_qty(symbol, 'C') != 0 or get_active_option_qty(symbol, 'P') != 0:
         return
+
 
     # 2. DATA ACQUISITION (5-minute bars)
     stock = Stock(symbol, 'SMART', 'USD')
@@ -102,42 +112,21 @@ def run_strategy():
     print(f"Price: {last.close:.2f} | EMA9: {last.ema9:.2f} | EMA21: {last.ema21:.2f} | VWAP: {last.vwap:.2f}")
 
     # 4. SIGNAL LOGIC
-    # Condition 1: 9 EMA crosses ABOVE 21 EMA
-    crossover = prev.ema9 <= prev.ema21 and last.ema9 > last.ema21
-    # Condition 2: Price is above VWAP (Bullish Filter)
-    above_vwap = last.close > last.vwap
+    bullish_cross = prev.ema9 <= prev.ema21 and last.ema9 > last.ema21
+    bearish_cross = prev.ema9 >= prev.ema21 and last.ema9 < last.ema21
     
-    if crossover and above_vwap:
-        print(">>> LONG SIGNAL DETECTED (EMA Cross + Price > VWAP)")
-        
-        try:
-            call_contract = get_atm_call(symbol)
-            
-            # Get current option price
-            opt_ticker = ib.reqTickers(call_contract)[0]
-            ib.sleep(1)
-            opt_price = opt_ticker.marketPrice()
-            
-            if np.isnan(opt_price) or opt_price <= 0:
-                print("Could not get valid option price. Aborting.")
-                return
+    # --- CALL LOGIC ---
+    if bullish_cross and last.close > last.vwap:
+        print(f">>> CALL SIGNAL: Price({last.close:.2f}) > VWAP({last.vwap:.2f})")
+        contract = get_atm_option(symbol, 'C')
+        place_bracket_order(contract)
 
-            # 5. EXECUTION (Bracket Order)
-            # 20% Profit Target / 10% Stop Loss
-            bracket = ib.bracketOrder(
-                'BUY', 1,
-                limitPrice=round(opt_price, 2),
-                takeProfitPrice=round(opt_price * 1.20, 2),
-                stopLossPrice=round(opt_price * 0.90, 2)
-            )
+    # --- PUT LOGIC ---
+    elif bearish_cross and last.close < last.vwap:
+        print(f">>> PUT SIGNAL: Price({last.close:.2f}) < VWAP({last.vwap:.2f})")
+        contract = get_atm_option(symbol, 'P')
+        place_bracket_order(contract)
 
-            for o in bracket:
-                ib.placeOrder(call_contract, o)
-            
-            print(f"✓ Bracket Order Placed for {call_contract.localSymbol} @ {opt_price}")
-
-        except Exception as e:
-            print(f"Order error: {e}")
 
 # 6. LOOP
 print("Bot started. Scanning every 60 seconds...")
