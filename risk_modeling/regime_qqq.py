@@ -12,7 +12,7 @@ ib = IB()
 def connect():
     if not ib.isConnected():
         try:
-            ib.connect('127.0.0.1', 4002, clientId=1)
+            ib.connect('127.0.0.1', 4001, clientId=1) # Connect to live data for real-time trading
             print("✓ Connected to IB Gateway")
         except Exception as e:
             print(f"✗ Connection failed: {e}")

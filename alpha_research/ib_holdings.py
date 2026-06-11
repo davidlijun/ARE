@@ -4,7 +4,7 @@ from datetime import datetime
 
 ib = IB()
 try:
-    ib.connect('127.0.0.1', 4002, clientId=2)
+    ib.connect('127.0.0.1', 4001, clientId=2)
 except Exception as e:
     print(f"Connection failed: {e}")
     exit()
@@ -90,7 +90,7 @@ def show_my_account():
                 bid_str = ask_str = mid_str = " Loading.."
 
             print(f"{parent:<12} | {name:<20} | {t.order.action:<6} | "
-                  f"{order_px:<10.2f} | {bid_str:<10} | {t.orderStatus.status}")
+                  f"{order_px:<10.2f} | {mid_str:<10} | {t.orderStatus.status}")
     else:
         print("No active orders found.")
 

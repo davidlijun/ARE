@@ -1,6 +1,7 @@
 """ Step 1: Import Libraries """
 import time
 import pandas as pd
+from datetime import datetime, timezone
 from ibapi.client import EClient
 from ibapi.wrapper import EWrapper
 from ibapi.contract import Contract
@@ -36,7 +37,7 @@ def run_loop(app):
 """ Step 3: Create a function to get the historical data """
 def get_equity_data(symbol='NVDA'):
     app = IBKRApp()
-    app.connect('127.0.0.1', 7497, 123)
+    app.connect('127.0.0.1', 4001, 123)
     api_thread = Thread(target=run_loop, args=(app,))
     api_thread.start()
     time.sleep(1)
@@ -47,7 +48,7 @@ def get_equity_data(symbol='NVDA'):
     contract.exchange = 'SMART'
     contract.currency = 'USD'
 
-    end_time = time.strftime('%Y%m%d %H:%M:%S')
+    end_time = datetime.now(timezone.utc).strftime('%Y%m%d %H:%M:%S')
     app.reqHistoricalData(
         reqId=1,
         contract=contract,
@@ -58,7 +59,8 @@ def get_equity_data(symbol='NVDA'):
         useRTH=1,
         formatDate=1,
         keepUpToDate=0,
-        chartOptions=[]
+        chartOptions=[],
+        timezoneId='America/New_York'
     )
     while not app.finished:
         time.sleep(.5)
