@@ -196,9 +196,9 @@ class MandelbrotSwingStandalone:
             self.ml_filter.maybe_retrain(self.trade_collector)
 
 
-def load_yf_spy_history(start_date="2024-01-01"):
+def load_yf_spy_history(ticker="SPY", start_date="2024-01-01"):
     """Download SPY OHLCV history from yfinance for testing."""
-    history = yf.download("SPY", start=start_date, progress=False, auto_adjust=True)
+    history = yf.download(ticker, start=start_date, progress=False, auto_adjust=True)
     history = history[["Open", "High", "Low", "Close", "Volume"]].dropna()
     return history
 
@@ -206,12 +206,13 @@ def load_yf_spy_history(start_date="2024-01-01"):
 # --- Main Execution Block ---
 if __name__ == "__main__":
     algo = MandelbrotSwingStandalone()
-    algo.tickers = ['SPY']
-    algo.cash_parking_ticker = 'SPY'
-    algo.price_history = {'SPY': pd.DataFrame()}
+    ticker = "QQQ"  # Using QQQ as the cash parking ticker for testing
+    algo.tickers = [ticker]  # Override tickers to just QQQ for focused testing
+    algo.cash_parking_ticker = ticker
+    algo.price_history = {ticker: pd.DataFrame()}
     algo.use_ml = True  # Enable ML filtering for testing
 
-    spy_history = load_yf_spy_history(start_date="2024-01-01")
+    spy_history = load_yf_spy_history(ticker=ticker, start_date="2024-01-01")
     for current_date, row in spy_history.iterrows():
         bar_data = {
             'open': float(row['Open']),
@@ -221,9 +222,9 @@ if __name__ == "__main__":
             'volume': float(row['Volume']),
             'date': current_date,
         }
-        algo.update_data('SPY', bar_data)
+        algo.update_data(ticker, bar_data)
         algo.run_daily_logic(current_date)
 
-    logger.info(f"====Completed SPY test run with {len(algo.trade_log)} trades====")
+    logger.info(f"====Completed {ticker} test run with {len(algo.trade_log)} trades====")
     for trade in algo.trade_log[:]:
         logger.info(trade)
