@@ -3,9 +3,7 @@ import pytz
 import numpy as np
 import pandas as pd
 from ib_insync import *
-from scipy.stats import linregress
 from risk_alert import calculate_tail_index, calculate_hurst
-from datetime import datetime
 
 
 class MandelbrotRecoveryBot:
@@ -60,6 +58,7 @@ class MandelbrotRecoveryBot:
             bars = self.ib.reqHistoricalData(
                 self.contract, '', durationStr='1 D', barSizeSetting='1 min', whatToShow='MIDPOINT', useRTH=True)
             prices = np.array([b.close for b in bars])
+            print(f"Fetched {len(prices)} price bars for analysis.")
             volumes = np.array([b.volume for b in bars])
             returns = np.diff(prices) / prices[:-1]
 
@@ -99,7 +98,7 @@ if __name__ == "__main__":
     RECOVERY_CASH = 50.0  # Your current balance
     MAX_ACCOUNT_DRAWDOWN = 0.15  # 15% Total Stop Loss
     HURST_THRESHOLD = 0.55       # Minimum persistence to enter
-    TIME_EXIT_AT = "15:00"       # 3:00 PM Atlantic Time
+    TIME_EXIT_AT = "17:00"       # 3:00 PM Atlantic Time
 
     bot = MandelbrotRecoveryBot()
     try:
