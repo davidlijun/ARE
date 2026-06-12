@@ -58,6 +58,7 @@ sys.path.append(str(Path(__file__).resolve().parent.parent))
 
 from data_pipeline import get_daily_returns, get_price_history, get_price_history_with_benchmark, get_premarket_data, get_live_intraday
 from risk_modeling import AlphaRiskEngine, calculate_mansfield_rs, monitor_mean_reversion, calculate_rs_bollinger_bands, get_rs_signals, detect_rs_hook
+from risk_modeling.risk_alert import scan_now
 
 # --- CONSTANTS ---
 PORTFOLIO_VALUE = 10_000 
@@ -954,6 +955,23 @@ with tab9:
         st.table(gap_data.style.map(highlight_gaps, subset=['Overnight Gap (%)']))
     else:
         st.info("Click 'Refresh Pre-Market/Gap Audit' to load gap analysis.")
+    # --- Risk Alert Portal ---
+    st.divider()
+    st.subheader("Risk Alert Portal")
+    alert_ticker = st.selectbox(
+        "Select Ticker for Regime Scan",
+        options=sorted(set(master_universe)),
+        index=sorted(set(master_universe)).index(selected_benchmark)
+        if selected_benchmark in master_universe else 0,
+    )
+    if st.button("Run Risk Alert Scan"):
+        import io
+        from contextlib import redirect_stdout
+
+        output_buffer = io.StringIO()
+        with redirect_stdout(output_buffer):
+            scan_now(alert_ticker)
+        st.text(output_buffer.getvalue())
     # 5. Tactical Consultant Action
     st.divider()
     st.subheader("Consultant's Intraday Audit")
