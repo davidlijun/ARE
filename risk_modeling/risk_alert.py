@@ -12,7 +12,7 @@ warnings.filterwarnings("ignore", category=DeprecationWarning)
 # CACHING CONFIGURATION
 # ============================================================================
 _CACHE = {}
-_CACHE_TTL = 300  # Cache data for 5 minutes (300 seconds)
+_CACHE_TTL = 60  # Cache data for 1 minute (60 seconds)
 
 
 def _get_cached_data(ticker_symbol, data_type, period, interval):
@@ -155,5 +155,7 @@ def scan_now(ticker_symbol="QQQ"):
 
 
 if __name__ == "__main__":
-    scan_now("QQQ")
+    while True: 
+        scan_now("QQQ")
+        time.sleep(60)  # Wait for 5 minutes before next scan
     # scan_now("SPY")
