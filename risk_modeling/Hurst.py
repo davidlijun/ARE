@@ -10,8 +10,8 @@ class MandelbrotRecoveryBot:
     def __init__(self):
         self.ib = IB()
         self.ib.connect('127.0.0.1', PORT, clientId=1)
-        self.ib.reqMarketDataType(3)  # Switch to delayed-frozen data if live not available
-        self.contract = Stock(TICKER, 'NASDAQ', 'USD')
+        self.ib.reqMarketDataType(4)  # Switch to delayed-frozen data if live not available
+        self.contract = Stock(TICKER, 'SMART', 'USD', primaryExchange='NASDAQ')
         self.ib.qualifyContracts(self.contract)
         self.initial_equity = self.get_total_equity()
         print(f"Bot Initialized. Starting Balance: ${self.initial_equity}")
@@ -57,9 +57,15 @@ class MandelbrotRecoveryBot:
 
             # 3. DATA ACQUISITION
             bars = self.ib.reqHistoricalData(
-                self.contract, '', durationStr='1 D', barSizeSetting='1 min', whatToShow='MIDPOINT', useRTH=True)
+                self.contract, '', durationStr='1 D', barSizeSetting='1 min', whatToShow='TRADES', useRTH=False)
+            if not bars:
+                print(f"[{now_at.strftime('%H:%M:%S')}] No data received. Checking connection...")
+                if not self.ib.isConnected():
+                    self.ib.reconnect()
+                self.ib.sleep(5) # Wait before retry
+                continue
             prices = np.array([b.close for b in bars])
-            print(f"Fetched {len(prices)} price bars for analysis.")
+            print(f"=====Fetched {len(prices)} price bars for analysis.")
             volumes = np.array([b.volume for b in bars])
             returns = np.diff(prices) / prices[:-1]
 
@@ -70,7 +76,7 @@ class MandelbrotRecoveryBot:
             current_price = prices[-1]
 
             print(
-                f"[{now_at.strftime('%H:%M:%S')}] Price: {current_price:.2f} | Hurst: {hurst:.3f} | Alpha: {alpha:.2f}")
+                f"=====[{now_at.strftime('%H:%M:%S')}] Price: {current_price:.2f}, Volume: {volumes[-1]} | Hurst: {hurst:.3f} | Alpha: {alpha:.2f}")
 
             # 5. TRADE LOGIC (RECOVERY MODE)
             qty = self.get_position_size()
