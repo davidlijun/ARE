@@ -1,4 +1,5 @@
 import datetime
+import time
 import pytz
 import numpy as np
 import pandas as pd
@@ -83,18 +84,23 @@ class MandelbrotRecoveryBot:
 
             # ENTRY: If Hurst > 0.55 (Stable Trend) and not in a position
             if qty == 0 and hurst > HURST_THRESHOLD and alpha > 1.6:
-                # Calculate fractional shares for $50
-                # Note: IBKR accounts must be enabled for fractional trading
-                target_qty = round(RECOVERY_CASH / current_price, 4)
-                print(
-                    f"REGIME 1 DETECTED. Buying ${RECOVERY_CASH} of {TICKER} ({target_qty} shares)")
-                self.ib.placeOrder(
-                    self.contract, MarketOrder('BUY', target_qty))
-
-            # EXIT: If Hurst drops below 0.45 (Trend Failure / Noise)
+                print(f"REGIME 1 DETECTED. Buying ${RECOVERY_CASH} of {TICKER}")
+                
+                # Create a Market Order but use cashQty instead of quantity
+                # Calculate the share quantity
+                calculated_shares = RECOVERY_CASH / current_price 
+                order = MarketOrder('BUY', calculated_shares)  # Quantity is 0 because we use cashQty
+                
+                trade = self.ib.placeOrder(self.contract, order)
+                print(f"Order placed: {trade.orderStatus.status}")
+                time.sleep(10)  # Wait for order to process
+            # EXIT Logic (Selling fractionals)
             elif qty > 0 and hurst < 0.45:
-                print(
-                    f"REGIME 4 DETECTED. Hurst {hurst:.3f} is too low. Exiting to Cash.")
+                print(f"REGIME 4 DETECTED. Liquidating fractional position: {qty}")
+                time.sleep(10)  # Wait for order to process
+                # For selling, you MUST use the exact quantity (fractional) 
+                # but use a Market Order. IBKR allows fractional SELL orders 
+                # for positions you already hold.
                 self.ib.placeOrder(self.contract, MarketOrder('SELL', qty))
 
 
@@ -102,7 +108,7 @@ class MandelbrotRecoveryBot:
 if __name__ == "__main__":
     PORT = 4001
     TICKER = 'QQQ'
-    RECOVERY_CASH = 50.0  # Your current balance
+    RECOVERY_CASH = 43  # Your current balance
     MAX_ACCOUNT_DRAWDOWN = 0.15  # 15% Total Stop Loss
     HURST_THRESHOLD = 0.55       # Minimum persistence to enter
     TIME_EXIT_AT = "17:00"       # 3:00 PM Atlantic Time
