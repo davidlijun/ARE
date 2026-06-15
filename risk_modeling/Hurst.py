@@ -10,7 +10,8 @@ class MandelbrotRecoveryBot:
     def __init__(self):
         self.ib = IB()
         self.ib.connect('127.0.0.1', PORT, clientId=1)
-        self.contract = Stock(TICKER, 'SMART', 'USD')
+        self.ib.reqMarketDataType(3)  # Switch to delayed-frozen data if live not available
+        self.contract = Stock(TICKER, 'NASDAQ', 'USD')
         self.ib.qualifyContracts(self.contract)
         self.initial_equity = self.get_total_equity()
         print(f"Bot Initialized. Starting Balance: ${self.initial_equity}")
@@ -93,7 +94,7 @@ class MandelbrotRecoveryBot:
 
 # --- EXECUTION ---
 if __name__ == "__main__":
-    PORT = 4002
+    PORT = 4001
     TICKER = 'QQQ'
     RECOVERY_CASH = 50.0  # Your current balance
     MAX_ACCOUNT_DRAWDOWN = 0.15  # 15% Total Stop Loss
