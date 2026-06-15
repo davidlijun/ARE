@@ -46,39 +46,108 @@ HURST_UNSTABLE_MAX = 0.45  # Threshold for unstable/choppy market
 TAIL_INDEX_SAFE = 1.7   # Threshold for safe tail risk
 TAIL_INDEX_RISKY = 1.55  # Threshold for elevated tail risk
 
-
 def calculate_hurst(prices, volumes=None):
-    """Measures Persistence: > 0.5 is Trending, < 0.5 is Mean Reverting.
-
-    If volumes are provided, the function weights price changes by volume to
-    avoid low-volume squeezes distorting the Hurst estimate.
     """
-    prices = np.asarray(prices, dtype=np.float64)
-
-    def _hurst_from_series(ts):
-        if len(ts) < 20 or np.all(ts == ts[0]):
-            return np.nan
-        max_lag = min(20, len(ts) - 1)
-        lags = range(2, max_lag)
-        tau = [np.sqrt(np.std(np.subtract(ts[lag:], ts[:-lag])))
-               for lag in lags]
-        if np.any(np.array(tau) <= 0):
-            return np.nan
-        reg = linregress(np.log(lags), np.log(tau))
-        return reg.slope * 2.0
-
+    Volume-Weighted Rescaled Range (VW-R/S)
+    Higher Hurst = High volume is driving a persistent trend.
+    Lower Hurst = Price is moving, but volume is inconsistent (noise).
+    This method is more robust to low-volume periods and can help avoid false signals during squeezes.
+    """
+    if len(prices) < 50: 
+        return 0.5
+    
+    # 1. Calculate Log Returns
+    # log(P_t / P_t-1)
+    returns = np.diff(np.log(prices))
+    
+    # 2. Apply Volume Weighting if available
     if volumes is not None:
-        volumes = np.asarray(volumes, dtype=np.float64)
-        if len(prices) == len(volumes) and len(prices) >= 21:
-            price_diff = np.diff(prices)
-            volume_slice = volumes[1:len(price_diff) + 1]
-            if len(price_diff) == len(volume_slice) and not np.all(volume_slice == 0):
-                vw_returns = price_diff * volume_slice
-                hurst_vw = _hurst_from_series(vw_returns)
-                if not np.isnan(hurst_vw):
-                    return hurst_vw
-        # Fall back to raw price Hurst if volume weighting fails
-    return _hurst_from_series(prices)
+        # Align volumes with returns (volumes has same length as prices)
+        # We use volumes from index 1 onwards to match the np.diff length
+        vols = np.array(volumes[1:])
+        avg_vol = np.mean(vols)
+        
+        if avg_vol > 0:
+            # Scale returns by (Current Volume / Average Volume)
+            rel_vol = vols / avg_vol
+            data = returns * rel_vol
+        else:
+            data = returns
+    else:
+        # If no volume, use standard log returns
+        data = returns
+
+    # 3. R/S Analysis Logic
+    N = len(data)
+    # Define logarithmic lags (sub-periods)
+    lags = [N // 8, N // 4, N // 2, N]
+    lags = [l for l in lags if l > 2] # Ensure lags are valid
+    
+    ARS = [] # Array of Rescaled Ranges
+
+    for lag in lags:
+        # Split data into non-overlapping chunks of size 'lag'
+        chunks = [data[i:i + lag] for i in range(0, N, lag) if len(data[i:i+lag]) == lag]
+        
+        RS_list = []
+        for chunk in chunks:
+            # Calculate Mean-Adjusted Series
+            mean_adj = chunk - np.mean(chunk)
+            # Cumulative Deviations
+            Z = np.cumsum(mean_adj)
+            # Range (R)
+            R = np.max(Z) - np.min(Z)
+            # Standard Deviation (S)
+            S = np.std(chunk)
+            
+            if S > 0:
+                RS_list.append(R / S)
+        
+        if RS_list:
+            # Average R/S for this lag
+            ARS.append(np.mean(RS_list))
+    
+    # 4. Regression to find the Hurst Exponent (Slope)
+    if len(ARS) < 2:
+        return 0.5
+    
+    # Regression of log(ARS) vs log(lags)
+    reg = linregress(np.log(lags), np.log(ARS))
+    
+    # Standard Hurst is the slope
+    return reg.slope
+
+# def calculate_hurst(prices, volumes=None):
+#     """Measures Persistence: > 0.5 is Trending, < 0.5 is Mean Reverting.
+
+#     If volumes are provided, the function weights price changes by volume to
+#     avoid low-volume squeezes distorting the Hurst estimate.
+#     """
+#     prices = np.asarray(prices, dtype=np.float64)
+
+#     def _hurst_from_series(ts):
+#         if len(ts) < 20 or np.all(ts == ts[0]):
+#             return np.nan
+#         max_lag = min(20, len(ts) - 1)
+#         lags = range(2, max_lag)
+#         tau = [np.std(np.subtract(ts[lag:], ts[:-lag])) for lag in lags]
+#         if np.any(np.array(tau) <= 0):
+#             return np.nan
+#         reg = linregress(np.log(lags), np.log(tau))
+#         return reg.slope * 2.0
+
+#     if volumes is not None:
+#         volumes = np.asarray(volumes, dtype=np.float64)
+#         if len(prices) == len(volumes) and len(prices) >= 21:
+#             price_diff = np.diff(prices)
+#             volume_slice = volumes[1:len(price_diff) + 1]
+#             if len(price_diff) == len(volume_slice) and not np.all(volume_slice == 0):
+#                 vw_returns = price_diff * volume_slice
+#                 hurst_vw = _hurst_from_series(vw_returns)
+#                 if not np.isnan(hurst_vw):
+#                     return hurst_vw
+#         # Fall back to raw price Hurst if volume weighting fails
+#     return _hurst_from_series(prices)
 
 
 def calculate_tail_index(returns):
