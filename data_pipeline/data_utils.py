@@ -29,7 +29,7 @@ def get_daily_returns(tickers, benchmark, start_date):
         DataFrame of daily returns
     """
     all_tickers = list(set(tickers + [benchmark]))
-    data = yf.download(all_tickers, start=start_date, auto_adjust=True, progress=False)['Close']
+    data = yf.download(all_tickers, start=start_date, auto_adjust=True, progress=False,)['Close']
     return data.pct_change(fill_method=None).dropna()
 
 
