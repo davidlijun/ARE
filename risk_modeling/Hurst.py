@@ -95,7 +95,7 @@ class MandelbrotRecoveryBot:
                 print(f"Order placed: {trade.orderStatus.status}")
                 time.sleep(10)  # Wait for order to process
             # EXIT Logic (Selling fractionals)
-            elif qty > 0 and hurst < 0.45:
+            elif qty > 0 and hurst < HURST_UNSTABLE_MAX:
                 print(f"REGIME 4 DETECTED. Liquidating fractional position: {qty}")
                 time.sleep(10)  # Wait for order to process
                 # For selling, you MUST use the exact quantity (fractional) 
@@ -111,6 +111,7 @@ if __name__ == "__main__":
     RECOVERY_CASH = 43  # Your current balance
     MAX_ACCOUNT_DRAWDOWN = 0.15  # 15% Total Stop Loss
     HURST_THRESHOLD = 0.55       # Minimum persistence to enter
+    HURST_UNSTABLE_MAX = 0.40    # Max Hurst for unstable regime
     TIME_EXIT_AT = "17:00"       # 3:00 PM Atlantic Time
 
     bot = MandelbrotRecoveryBot()
