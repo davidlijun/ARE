@@ -27,7 +27,7 @@ class AlphaRiskEngine:
         """Fetch adjusted close prices and calculate daily returns."""
         # print(f"Ingesting data for: {self.tickers}")
         raw_data = yf.download(
-            self.tickers + [self.benchmark], start=self.start_date)['Close']
+            self.tickers + [self.benchmark], start=self.start_date, prepost=True)['Close']
         self.returns = raw_data.dropna().pct_change().dropna()
         # print("Data Ingested. Sample Returns:")
         # print(self.returns.head())

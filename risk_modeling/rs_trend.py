@@ -27,7 +27,7 @@ def calculate_professional_rs(ticker_data, benchmark_data, window=52):
 
 # --- Integrated Execution ---
 def get_rs_signals(tickers, benchmark='SPY'):
-    data = yf.download(tickers + [benchmark], period="2y", auto_adjust=True)['Close']
+    data = yf.download(tickers + [benchmark], period="2y", auto_adjust=True, prepost=True)['Close']
     results = []
     
     for t in tickers:

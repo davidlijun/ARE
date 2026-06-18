@@ -23,7 +23,7 @@ def fetch_macro_data():
     
     tickers = list(ticker_map.keys())
     # Download 5 days to calculate delta/change
-    data = yf.download(tickers, period="5d", interval="1d")['Close']
+    data = yf.download(tickers, period="5d", interval="1d", prepost=True)['Close']
     stats = {}
     for t_id, name in ticker_map.items():
         current_val = data[t_id].dropna().iloc[-1]
@@ -116,7 +116,7 @@ st.subheader("Post-Earnings Drift: Tech Leaders")
 def get_chart_data():
     # Comparing current AI leaders
     tks = ["AMD", "GOOG", "MSFT", "SNDK"]
-    d = yf.download(tks, period="1mo", interval="1d")['Close']
+    d = yf.download(tks, period="1mo", interval="1d", prepost=True)['Close']
     # Normalize to 100 for comparison
     return (d / d.dropna().iloc[0] * 100)
 
