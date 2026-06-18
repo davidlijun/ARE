@@ -969,20 +969,79 @@ with tab9:
     # --- Risk Alert Portal ---
     st.divider()
     st.subheader("Risk Alert Portal")
-    alert_ticker = st.selectbox(
-        "Select Ticker for Regime Scan",
-        options=sorted(set(monitor_list)),
-        index=sorted(set(monitor_list)).index(selected_benchmark)
-        if selected_benchmark in monitor_list else 0,
-    )
-    if st.button("Run Risk Alert Scan"):
-        import io
-        from contextlib import redirect_stdout
+    
+    # Display Monitor List
+    st.write(f"**Total Tickers Monitored:** {len(monitor_list)}")
+    st.write(f"**Monitor List:** {', '.join(sorted(monitor_list))}")
+    
+    col1, col2 = st.columns(2)
+    with col1:
+        alert_ticker = st.selectbox(
+            "Select Ticker for Regime Scan",
+            options=sorted(set(monitor_list)),
+            index=sorted(set(monitor_list)).index(selected_benchmark)
+            if selected_benchmark in monitor_list else 0,
+        )
+        if st.button("Run Risk Alert Scan"):
+            import io
+            from contextlib import redirect_stdout
 
-        output_buffer = io.StringIO()
-        with redirect_stdout(output_buffer):
-            scan_now(alert_ticker)
-        st.text(output_buffer.getvalue())
+            output_buffer = io.StringIO()
+            with redirect_stdout(output_buffer):
+                scan_now(alert_ticker)
+            st.text(output_buffer.getvalue())
+    
+    with col2:
+        if st.button("Scan All Tickers & List Signals"):
+            import io
+            from contextlib import redirect_stdout
+            
+            st.info(f"Scanning all {len(monitor_list)} tickers for regime signals...")
+            
+            all_signals = []
+            for ticker in sorted(monitor_list):
+                output_buffer = io.StringIO()
+                with redirect_stdout(output_buffer):
+                    try:
+                        scan_now(ticker)
+                    except Exception as e:
+                        print(f"Error scanning {ticker}: {e}")
+                
+                # Parse the output to extract regime signal
+                output = output_buffer.getvalue()
+                lines = output.strip().split('\n')
+                regime = "UNKNOWN"
+                hurst = "N/A"
+                tail_idx = "N/A"
+                price = "N/A"
+                
+                for line in lines:
+                    if "RESULT REGIME:" in line:
+                        regime = line.split("RESULT REGIME:")[1].strip()
+                    elif "Hurst (Trend):" in line:
+                        hurst = line.split("Hurst (Trend):")[1].strip()
+                    elif "Tail Index:" in line:
+                        tail_idx = line.split("Tail Index:")[1].strip()
+                    elif "Current Price:" in line:
+                        price = line.split("Current Price:")[1].strip()
+                
+                all_signals.append({
+                    "Ticker": ticker,
+                    "Price": price,
+                    "Hurst": hurst,
+                    "Tail Index": tail_idx,
+                    "Signal/Regime": regime
+                })
+            
+            # Display signals table
+            df_signals = pd.DataFrame(all_signals).sort_values(by="Signal/Regime")
+            st.subheader("📊 All Risk Alert Signals")
+            st.dataframe(df_signals, hide_index=True, use_container_width=True)
+            
+            # Summary statistics
+            st.subheader("🎯 Signal Summary")
+            signal_counts = df_signals["Signal/Regime"].value_counts()
+            st.bar_chart(signal_counts)
         
     # 5. Tactical Consultant Action
     st.divider()
