@@ -107,7 +107,7 @@ class MandelbrotRecoveryBot:
 # --- EXECUTION ---
 if __name__ == "__main__":
     PORT = 4001
-    TICKER = 'QQQ'
+    TICKER = 'MRVL'
     RECOVERY_CASH = 43  # Your current balance
     MAX_ACCOUNT_DRAWDOWN = 0.15  # 15% Total Stop Loss
     HURST_THRESHOLD = 0.55       # Minimum persistence to enter
