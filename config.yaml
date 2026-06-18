@@ -17,6 +17,7 @@ universe:
   benchmarks:
     - XAW.TO
     - SPY
+    - QQQ
     - XIU.TO
 
 # Default selections when the app loads

@@ -58,8 +58,8 @@ def calculate_hurst(prices, volumes=None):
     
     # 1. Calculate Log Returns
     # log(P_t / P_t-1)
-    returns = np.diff(np.log(prices))
-    
+    returns =  np.log(prices[1:]) - np.log(prices[:-1])
+    # print(returns[:5])  # Print first 5 returns for debugging
     # 2. Apply Volume Weighting if available
     if volumes is not None:
         # Align volumes with returns (volumes has same length as prices)
@@ -70,96 +70,64 @@ def calculate_hurst(prices, volumes=None):
         if avg_vol > 0:
             # Scale returns by (Current Volume / Average Volume)
             rel_vol = vols / avg_vol
-            data = returns * rel_vol
+            data = returns * rel_vol # This weights returns by how much volume is above/below average, emphasizing high-volume moves and de-emphasizing low-volume noise.
         else:
             data = returns
     else:
         # If no volume, use standard log returns
         data = returns
 
-    # 3. R/S Analysis Logic
+    # 2. Optimized Lags: Powers of 2 provide better fractal scaling
     N = len(data)
-    # Define logarithmic lags (sub-periods)
-    lags = [N // 8, N // 4, N // 2, N]
-    lags = [l for l in lags if l > 2] # Ensure lags are valid
+    lags = [2**i for i in range(4, int(np.log2(N)))]
+    if len(lags) < 2: return 0.5
     
-    ARS = [] # Array of Rescaled Ranges
-
+    RS = []
     for lag in lags:
-        # Split data into non-overlapping chunks of size 'lag'
-        chunks = [data[i:i + lag] for i in range(0, N, lag) if len(data[i:i+lag]) == lag]
-        
-        RS_list = []
-        for chunk in chunks:
-            # Calculate Mean-Adjusted Series
-            mean_adj = chunk - np.mean(chunk)
-            # Cumulative Deviations
-            Z = np.cumsum(mean_adj)
-            # Range (R)
-            R = np.max(Z) - np.min(Z)
-            # Standard Deviation (S)
-            S = np.std(chunk)
+        # Split into non-overlapping blocks
+        num_blocks = N // lag
+        rs_sub = []
+        for i in range(num_blocks):
+            block = data[i*lag : (i+1)*lag]
+            # Rescaled Range Calculation
+            diff = block - np.mean(block)
+            cum_sum = np.cumsum(diff)
+            r = np.max(cum_sum) - np.min(cum_sum)
+            s = np.std(block)
+            if s > 0:
+                rs_sub.append(r / s)
+        if rs_sub:
+            RS.append(np.mean(rs_sub))
             
-            if S > 0:
-                RS_list.append(R / S)
-        
-        if RS_list:
-            # Average R/S for this lag
-            ARS.append(np.mean(RS_list))
+    if len(RS) < 2: return 0.5
     
-    # 4. Regression to find the Hurst Exponent (Slope)
-    if len(ARS) < 2:
-        return 0.5
-    
-    # Regression of log(ARS) vs log(lags)
-    reg = linregress(np.log(lags), np.log(ARS))
-    
-    # Standard Hurst is the slope
-    return reg.slope
-
-# def calculate_hurst(prices, volumes=None):
-#     """Measures Persistence: > 0.5 is Trending, < 0.5 is Mean Reverting.
-
-#     If volumes are provided, the function weights price changes by volume to
-#     avoid low-volume squeezes distorting the Hurst estimate.
-#     """
-#     prices = np.asarray(prices, dtype=np.float64)
-
-#     def _hurst_from_series(ts):
-#         if len(ts) < 20 or np.all(ts == ts[0]):
-#             return np.nan
-#         max_lag = min(20, len(ts) - 1)
-#         lags = range(2, max_lag)
-#         tau = [np.std(np.subtract(ts[lag:], ts[:-lag])) for lag in lags]
-#         if np.any(np.array(tau) <= 0):
-#             return np.nan
-#         reg = linregress(np.log(lags), np.log(tau))
-#         return reg.slope * 2.0
-
-#     if volumes is not None:
-#         volumes = np.asarray(volumes, dtype=np.float64)
-#         if len(prices) == len(volumes) and len(prices) >= 21:
-#             price_diff = np.diff(prices)
-#             volume_slice = volumes[1:len(price_diff) + 1]
-#             if len(price_diff) == len(volume_slice) and not np.all(volume_slice == 0):
-#                 vw_returns = price_diff * volume_slice
-#                 hurst_vw = _hurst_from_series(vw_returns)
-#                 if not np.isnan(hurst_vw):
-#                     return hurst_vw
-#         # Fall back to raw price Hurst if volume weighting fails
-#     return _hurst_from_series(prices)
-
+    # 3. Regression: log(R/S) vs log(n)
+    res = linregress(np.log(lags), np.log(RS))
+    return res.slope
 
 def calculate_tail_index(returns):
     """Measures Risk: < 1.6 is 'Fat Tail' (High Risk of Crash)"""
-    abs_returns = np.sort(np.abs(returns))
-    if len(abs_returns) < 5:
-        return np.nan
-    k = max(1, int(len(abs_returns) * 0.05))  # Look at top 5% extremes
-    tails = abs_returns[-k:]
-    if tails[0] <= 0:
-        return np.nan
-    return 1 / (np.mean(np.log(tails / tails[0])))
+    """Ultra-Sensitive Alpha: Focuses on the 'Crash' zone"""
+    if len(returns) < 100: return 2.0
+    
+    # 1. Focus on the absolute returns (Both tails)
+    data = np.abs(returns)
+    data = np.sort(data)
+    
+    # 2. Sensitivity Adjustment: Look at top 2.5% instead of 5%
+    # This prevents the 'dilution' you saw in your test (1.95 result)
+    k = int(len(data) * 0.025) 
+    if k < 5: k = 5
+    
+    tails = data[-k:]
+    # Threshold is the value at the start of the tail
+    threshold = tails[0]
+    
+    if threshold <= 0: return 3.0
+    
+    # 3. Hill Estimator
+    alpha = 1.0 / (np.mean(np.log(tails / threshold)))
+    return alpha
 
 
 def scan_now(ticker_symbol="QQQ"):
@@ -167,10 +135,11 @@ def scan_now(ticker_symbol="QQQ"):
 
     # 1. Get Data (Daily for long term, 5-min for immediate trend)
     # Try to retrieve from cache first
-    data = _get_cached_data(ticker_symbol, "intraday", "1mo", "5m")
+    data = _get_cached_data(ticker_symbol, "intraday", "8d", "1m")
     if data is None:
-        data = yf.download(ticker_symbol, period="1mo", interval="5m")
-        _set_cached_data(ticker_symbol, "intraday", "1mo", "5m", data)
+        # Added prepost=True to capture Pre-Market and After-Hours
+        data = yf.download(ticker_symbol, period="8d", interval="1m", prepost=True)
+        _set_cached_data(ticker_symbol, "intraday", "8d", "1m", data)
 
     daily_data = _get_cached_data(ticker_symbol, "daily", "2y", "1d")
     if daily_data is None:
@@ -194,7 +163,8 @@ def scan_now(ticker_symbol="QQQ"):
         last_price = float(last_price.item())
     else:
         last_price = float(last_price)
-
+    # print(intraday_prices.shape)  # Print last 5 prices for debugging
+    # print(intraday_volumes.shape)  # Print last 5 volumes for debugging
     # 3. Calculate Indicators
     h_intraday = calculate_hurst(
         intraday_prices[-100:], intraday_volumes[-100:])

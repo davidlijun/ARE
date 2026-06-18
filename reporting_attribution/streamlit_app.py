@@ -1,4 +1,8 @@
 # Standard library
+from risk_modeling.risk_alert import scan_now
+from risk_modeling import AlphaRiskEngine, calculate_mansfield_rs, monitor_mean_reversion, calculate_rs_bollinger_bands, get_rs_signals, detect_rs_hook
+from data_pipeline import get_daily_returns, get_price_history, get_price_history_with_benchmark, get_premarket_data, get_live_intraday
+from frontier_plots import plot_institutional_frontier
 import datetime
 import os
 import sys
@@ -34,6 +38,7 @@ DEFAULT_REQUEST_HEADERS = {
 
 _original_requests_session_request = requests.Session.request
 
+
 def _requests_session_request_with_headers(self, method, url, *args, **kwargs):
     headers = kwargs.get('headers', {}) or {}
     if not isinstance(headers, dict):
@@ -42,29 +47,27 @@ def _requests_session_request_with_headers(self, method, url, *args, **kwargs):
     kwargs['headers'] = merged_headers
     return _original_requests_session_request(self, method, url, *args, **kwargs)
 
+
 requests.Session.request = _requests_session_request_with_headers
 
 # Create a valid path in your Windows Temp directory
-cache_path = os.path.join(os.environ['TEMP'], 'yfinance') if os.name == 'nt' else ad.user_cache_dir("yfinance")
+cache_path = os.path.join(
+    os.environ['TEMP'], 'yfinance') if os.name == 'nt' else ad.user_cache_dir("yfinance")
 if not os.path.exists(cache_path):
     os.makedirs(cache_path)
 yf.set_tz_cache_location(cache_path)
 # Local modules
-from frontier_plots import plot_institutional_frontier
 
 # Add the parent directory to sys.path
 sys.path.append(str(Path(__file__).resolve().parent.parent))
 # Prefer setting PYTHONPATH or using a package structure with __init__.py files.
 
-from data_pipeline import get_daily_returns, get_price_history, get_price_history_with_benchmark, get_premarket_data, get_live_intraday
-from risk_modeling import AlphaRiskEngine, calculate_mansfield_rs, monitor_mean_reversion, calculate_rs_bollinger_bands, get_rs_signals, detect_rs_hook
-from risk_modeling.risk_alert import scan_now
 
 # --- CONSTANTS ---
-PORTFOLIO_VALUE = 10_000 
-RS_WINDOW = 50 
-RS_LOOKBACK_WINDOW = 200 
-ANNUAL_TRADING_DAYS = 252 
+PORTFOLIO_VALUE = 10_000
+RS_WINDOW = 50
+RS_LOOKBACK_WINDOW = 200
+ANNUAL_TRADING_DAYS = 252
 
 # --- CONFIGURATION & STYLING ---
 st.set_page_config(page_title="Alpha Risk Engine (ARE)", layout="wide")
@@ -146,9 +149,10 @@ returns = get_daily_returns(
     cfg['defaults']['start_date']
 )
 if returns.empty:
-    st.error("No data available for the selected tickers and date range. Please adjust your selection.")
+    st.error(
+        "No data available for the selected tickers and date range. Please adjust your selection.")
     st.stop()
-    
+
 # --- DISPLAY METADATA ---
 st.title(cfg['metadata']['report_title'])
 st.caption(
@@ -161,7 +165,8 @@ st.write(f"Risk-Free Rate (Annualized Proxy): {rf:.1%}")
 # Display returns data preview
 with st.expander("📊 Returns Data Preview"):
     st.dataframe(returns.tail(3), width='stretch')
-    st.caption(f"Data shape: {returns.shape[0]} periods × {returns.shape[1]} assets | Starting: {returns.index[0].date()}")
+    st.caption(
+        f"Data shape: {returns.shape[0]} periods × {returns.shape[1]} assets | Starting: {returns.index[0].date()}")
 
 
 market_caps = {ticker: yf.Ticker(ticker).info.get(
@@ -641,7 +646,8 @@ with tab8:
     rs_results = []
 
     # Fetch 2 years of data for the 52-week SMA
-    rs_data = get_price_history_with_benchmark(rs_universe, rs_benchmark, period="2y", interval="1d")
+    rs_data = get_price_history_with_benchmark(
+        rs_universe, rs_benchmark, period="2y", interval="1d")
 
     for t in rs_universe:
         mrs_series, slope_series = calculate_mansfield_rs(
@@ -701,7 +707,8 @@ with tab8:
 
         # bubble alert: If the price is more than 50% above the 200-day moving average,
         # it may be overextended and at risk of a sharp pullback.
-        price_200ma = rs_data[t].ffill().rolling(window=RS_LOOKBACK_WINDOW).mean()
+        price_200ma = rs_data[t].ffill().rolling(
+            window=RS_LOOKBACK_WINDOW).mean()
         dist_from_200ma = (rs_data[t].ffill().iloc[-1] /
                            price_200ma.ffill().iloc[-1] - 1) * 100
         # print(dist_from_200ma)
@@ -817,31 +824,32 @@ with tab8:
 all_monitor_tickers = []
 gap_df = None
 
+
 def fetch_premarket_and_gap(tickers):
     """Fetch pre-market and gap analysis for given tickers."""
     if not tickers:
         return None
-    
+
     data, hist = get_premarket_data(tickers)
     if data is None or hist is None:
         return None
-    
+
     try:
         results = []
         for t in tickers:
             try:
                 # 1. Previous Day Close
                 prev_close = hist[t].iloc[-2]
-                
+
                 # 2. Today's First Price (Pre-market start or Open)
                 today_data = data['Adj Close'][t].dropna()
-                
+
                 # Pre-market price (last point)
                 current_extended = today_data.iloc[-1]
-                
+
                 # 3. Calculate Gap
                 gap_pct = ((today_data.iloc[0] / prev_close) - 1) * 100
-                
+
                 results.append({
                     "Ticker": t,
                     "Prev Close": round(prev_close, 2),
@@ -851,10 +859,11 @@ def fetch_premarket_and_gap(tickers):
                 })
             except Exception:
                 continue
-        
+
         return pd.DataFrame(results) if results else None
     except Exception:
         return None
+
 
 with tab9:
     st.header("🎛️ Live Market Execution Terminal")
@@ -925,7 +934,7 @@ with tab9:
 
             st.dataframe(
                 df_live.style.map(style_live_report, subset=[
-                                       'Day Change (%)', 'Rel. to Bench (%)']),
+                    'Day Change (%)', 'Rel. to Bench (%)']),
                 width='stretch',
                 hide_index=True
             )
@@ -943,7 +952,7 @@ with tab9:
             st.success("Gap data refreshed.")
         else:
             st.error("Unable to fetch gap data.")
-    
+
     # Display gap table if data is available
     gap_data = globals().get('gap_df')
     if gap_data is not None:
@@ -951,18 +960,20 @@ with tab9:
         def highlight_gaps(val):
             color = 'red' if val < -2 else 'green' if val > 2 else 'white'
             return f'color: {color}; font-weight: bold'
-        
-        st.table(gap_data.style.map(highlight_gaps, subset=['Overnight Gap (%)']))
+
+        st.table(gap_data.style.map(
+            highlight_gaps, subset=['Overnight Gap (%)']))
     else:
         st.info("Click 'Refresh Pre-Market/Gap Audit' to load gap analysis.")
+        
     # --- Risk Alert Portal ---
     st.divider()
     st.subheader("Risk Alert Portal")
     alert_ticker = st.selectbox(
         "Select Ticker for Regime Scan",
-        options=sorted(set(master_universe)),
-        index=sorted(set(master_universe)).index(selected_benchmark)
-        if selected_benchmark in master_universe else 0,
+        options=sorted(set(monitor_list)),
+        index=sorted(set(monitor_list)).index(selected_benchmark)
+        if selected_benchmark in monitor_list else 0,
     )
     if st.button("Run Risk Alert Scan"):
         import io
@@ -972,6 +983,7 @@ with tab9:
         with redirect_stdout(output_buffer):
             scan_now(alert_ticker)
         st.text(output_buffer.getvalue())
+        
     # 5. Tactical Consultant Action
     st.divider()
     st.subheader("Consultant's Intraday Audit")
@@ -984,6 +996,7 @@ with tab9:
             "📉 **Liquidation Alert:** Systemic sell-off detected. Monitor KILO.TO for safe-haven decoupling.")
     else:
         st.info("Regime: Normal Intraday Variance. No emergency rebalancing required.")
+        
 # --- FOOTER: DECISION LOG ---
 st.divider()
 st.subheader("Decision Log Entry")
