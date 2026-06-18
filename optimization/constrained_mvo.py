@@ -13,7 +13,7 @@ def run_constrained_optimization():
     targets = {k: v['target'] for k, v in cfg['constraints'].items()}
 
     # 2. Ingest Data
-    data = yf.download(tickers, start="2024-01-01")['Close']
+    data = yf.download(tickers, start="2024-01-01", prepost=True)['Close']
     # returns = data.pct_change().dropna()
 
     # 3. Calculate Risk/Return Proxies

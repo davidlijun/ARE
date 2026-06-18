@@ -198,7 +198,7 @@ class MandelbrotSwingStandalone:
 
 def load_yf_spy_history(ticker="SPY", start_date="2024-01-01"):
     """Download SPY OHLCV history from yfinance for testing."""
-    history = yf.download(ticker, start=start_date, progress=False, auto_adjust=True)
+    history = yf.download(ticker, start=start_date, progress=False, auto_adjust=True, prepost=True)
     history = history[["Open", "High", "Low", "Close", "Volume"]].dropna()
     return history
 

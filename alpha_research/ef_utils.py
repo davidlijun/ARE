@@ -6,7 +6,7 @@ TRADING_DAYS = 252
 
 
 def download_price_data(tickers, start_date="2020-01-01"):
-    data = yf.download(tickers, start=start_date, progress=False)
+    data = yf.download(tickers, start=start_date, progress=False, prepost=True)
     if data.empty:
         raise ValueError(f"No price data returned for tickers: {tickers}")
 

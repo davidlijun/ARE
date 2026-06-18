@@ -109,7 +109,7 @@ st.session_state.conf_df = edited_df
 if st.button("Run Individualized Optimization"):
     with st.spinner("Analyzing Variance-Covariance Matrix..."):
         # Fetching Data (2026 'Close' fix)
-        df = yf.download(st.session_state.universe, period="2y")['Close'].dropna()
+        df = yf.download(st.session_state.universe, period="2y", prepost=True)['Close'].dropna()
         returns = df.pct_change().dropna()
         
         market_caps, w_mkt = market_cap(st.session_state.universe)

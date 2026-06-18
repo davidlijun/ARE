@@ -143,7 +143,7 @@ def scan_now(ticker_symbol="QQQ"):
 
     daily_data = _get_cached_data(ticker_symbol, "daily", "2y", "1d")
     if daily_data is None:
-        daily_data = yf.download(ticker_symbol, period="2y", interval="1d")
+        daily_data = yf.download(ticker_symbol, period="2y", interval="1d", prepost=True)
         _set_cached_data(ticker_symbol, "daily", "2y", "1d", daily_data)
 
     # 2. Process Returns

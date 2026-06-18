@@ -29,7 +29,7 @@ def get_daily_returns(tickers, benchmark, start_date):
         DataFrame of daily returns
     """
     all_tickers = list(set(tickers + [benchmark]))
-    data = yf.download(all_tickers, start=start_date, auto_adjust=True, progress=False)['Close']
+    data = yf.download(all_tickers, start=start_date, auto_adjust=True, progress=False, prepost=True)['Close']
     return data.pct_change(fill_method=None).dropna()
 
 
@@ -46,7 +46,7 @@ def get_price_history(tickers, period="2y", interval="1d"):
     Returns:
         DataFrame of closing prices
     """
-    data = yf.download(tickers, period=period, interval=interval, auto_adjust=True, progress=False)['Close']
+    data = yf.download(tickers, period=period, interval=interval, auto_adjust=True, progress=False, prepost=True)['Close']
     return data
 
 
@@ -65,7 +65,7 @@ def get_price_history_with_benchmark(tickers, benchmark, period="2y", interval="
         DataFrame of closing prices including benchmark
     """
     all_tickers = tickers + [benchmark]
-    data = yf.download(all_tickers, period=period, interval=interval, auto_adjust=True, progress=False)['Close']
+    data = yf.download(all_tickers, period=period, interval=interval, auto_adjust=True, progress=False, prepost=True)['Close']
     return data
 
 
@@ -88,7 +88,7 @@ def get_premarket_data(tickers):
         intraday = yf.download(tickers, period="1d", interval="1m", prepost=True, progress=False)
         
         # 2-day daily data for previous close
-        history = yf.download(tickers, period="2d", interval="1d", progress=False)['Close']
+        history = yf.download(tickers, period="2d", interval="1d", progress=False, prepost=True)['Close']
         
         return intraday, history
     except Exception:
@@ -112,7 +112,7 @@ def get_live_intraday(tickers, period="2d"):
         return None
     
     try:
-        data = yf.download(tickers, period=period, interval="1m", progress=False)['Close']
+        data = yf.download(tickers, period=period, interval="1m", progress=False, prepost=True)['Close']
         return data
     except Exception:
         return None

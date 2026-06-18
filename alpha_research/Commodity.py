@@ -5,7 +5,7 @@ import pandas as pd
 FIB_LEVELS = [0.236, 0.382, 0.5, 0.618, 0.786]
 
 def load_gold(start="2018-01-01"):
-    df = yf.download("GC=F", start=start, auto_adjust=True)
+    df = yf.download("GC=F", start=start, auto_adjust=True, prepost=True)
     df.columns = df.columns.droplevel(1)  # Drop multi-index if exists
     df.reset_index(inplace=True)
     return df

@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 assets = ["AAPL", "MSFT", "GOOG", "AMZN", "TSLA"]
 start = "2020-01-01"
 
-data = yf.download(assets, start=start)["Close"]
+data = yf.download(assets, start=start, prepost=True)["Close"]
 
 # Compute daily returns
 returns = data.pct_change().dropna()

@@ -16,7 +16,7 @@ class AREDataLoader:
         SHY: 1-3 Year Treasury Bond ETF
         """
         print("Fetching Macro and Equity data...")
-        data = yf.download(tickers, period="1y", interval="1d")['Close']
+        data = yf.download(tickers, period="1y", interval="1d", prepost=True)['Close']
         
         # Calculate Returns and Volatility for HMM
         features = pd.DataFrame()
@@ -71,7 +71,7 @@ class AREDataLoader:
         Fetches 1-minute data for VPIN toxicity analysis.
         """
         print(f"Fetching Intraday 1-min data for {ticker}...")
-        data = yf.download(ticker, period="5d", interval="1m")
+        data = yf.download(ticker, period="5d", interval="1m", prepost=True)
         
         # yfinance doesn't provide trade side (buy/sell), so we use the 
         # 'Tick Rule' (Price > Prev Price = Buy)
