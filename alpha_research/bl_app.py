@@ -100,7 +100,7 @@ edited_df = st.sidebar.data_editor(
     st.session_state.conf_df, 
     key=st.session_state.editor_key, 
     hide_index=True,
-    use_container_width=True
+    width='stretch'
 )
 # Sync the edited data back to session state
 st.session_state.conf_df = edited_df

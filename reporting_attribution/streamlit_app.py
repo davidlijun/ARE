@@ -1036,7 +1036,7 @@ with tab9:
             # Display signals table
             df_signals = pd.DataFrame(all_signals).sort_values(by="Signal/Regime")
             st.subheader("📊 All Risk Alert Signals")
-            st.dataframe(df_signals, hide_index=True, use_container_width=True)
+            st.dataframe(df_signals, hide_index=True, width='stretch')
             
             # Summary statistics
             st.subheader("🎯 Signal Summary")

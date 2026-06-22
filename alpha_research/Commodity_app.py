@@ -67,7 +67,7 @@ fig.update_layout(
     yaxis_title="Price (USD)"
 )
 
-st.plotly_chart(fig, use_container_width=True)
+st.plotly_chart(fig, width='stretch')
 
 # -------------------------
 # Quant interpretation
