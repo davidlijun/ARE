@@ -88,11 +88,11 @@ st.sidebar.header("ARE Control Panel")
 master_universe = (
     cfg['universe']['core'] +
     cfg['universe']['active_growth'] +
-    cfg['universe']['active_em'] +
+    cfg['universe']['passive_em'] +
     cfg['universe']['intl_hedged'] +
     cfg['universe']['us_tech'] +
-    cfg['universe']['cad_value'] +
-    cfg['universe']['risk_balancers']
+    cfg['universe']['cad_value']
+
 )
 
 selected_benchmark = st.sidebar.selectbox(
