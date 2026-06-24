@@ -15,22 +15,6 @@ _CACHE = {}
 _CACHE_TTL = 60  # Cache data for 1 minute (60 seconds)
 
 
-def _get_cached_data(ticker_symbol, data_type, period, interval):
-    """Retrieve cached data if available and not expired."""
-    cache_key = f"{ticker_symbol}_{data_type}_{period}_{interval}"
-    if cache_key in _CACHE:
-        data, timestamp = _CACHE[cache_key]
-        if time.time() - timestamp < _CACHE_TTL:
-            return data
-    return None
-
-
-def _set_cached_data(ticker_symbol, data_type, period, interval, data):
-    """Store data in cache with current timestamp."""
-    cache_key = f"{ticker_symbol}_{data_type}_{period}_{interval}"
-    _CACHE[cache_key] = (data, time.time())
-
-
 # ============================================================================
 # MANDELBROT REGIME CLASSIFICATION THRESHOLDS
 # ============================================================================
