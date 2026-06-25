@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 from scipy.stats import linregress
 import matplotlib.pyplot as plt
-from risk_alert import calculate_hurst, calculate_tail_index
+from risk_modeling.mandelbrot import calculate_hurst, calculate_tail_index
 
 # --- THE TEST SUITE ---
 

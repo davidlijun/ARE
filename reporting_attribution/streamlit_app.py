@@ -1,14 +1,8 @@
 # Standard library
-from risk_modeling.risk_alert import scan_now
+from risk_modeling.mandelbrot import scan_market
 from risk_modeling import AlphaRiskEngine, calculate_mansfield_rs, monitor_mean_reversion, calculate_rs_bollinger_bands, get_rs_signals, detect_rs_hook
 from data_pipeline import get_daily_returns, get_price_history, get_price_history_with_benchmark, get_premarket_data, get_live_intraday
 from frontier_plots import plot_institutional_frontier
-import datetime
-import os
-import sys
-from pathlib import Path
-
-# Third-party libraries
 import numpy as np
 import pandas as pd
 import plotly.express as px
@@ -27,6 +21,21 @@ from pypfopt import (
     EfficientFrontier,
     objective_functions,
 )
+from enable_repo_root import ensure_repo_root
+import datetime
+import os
+import sys
+from pathlib import Path
+
+# Ensure the repository root is on PYTHONPATH for local imports.
+REPO_ROOT = Path(__file__).resolve().parents[1]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
+ensure_repo_root(REPO_ROOT)
+
+
+# Third-party libraries
 
 # Apply default request headers for all requests sessions so yfinance uses headers
 DEFAULT_REQUEST_HEADERS = {
@@ -58,16 +67,31 @@ if not os.path.exists(cache_path):
 yf.set_tz_cache_location(cache_path)
 # Local modules
 
-# Add the parent directory to sys.path
-sys.path.append(str(Path(__file__).resolve().parent.parent))
 # Prefer setting PYTHONPATH or using a package structure with __init__.py files.
-
 
 # --- CONSTANTS ---
 PORTFOLIO_VALUE = 10_000
 RS_WINDOW = 50
 RS_LOOKBACK_WINDOW = 200
 ANNUAL_TRADING_DAYS = 252
+
+
+def get_regime_icon(regime: str) -> str:
+    regime_text = (regime or "").upper()
+    if "1 - BULLISH" in regime_text:
+        return "🟢"
+    if "2 - BEARISH" in regime_text:
+        return "🔴"
+    if "3 - NEUTRAL" in regime_text or "RANDOM WALK" in regime_text:
+        return "🟡"
+    if "4 - UNSTABLE" in regime_text:
+        return "⚠️"
+    if "5 - TAIL RISK" in regime_text:
+        return "🚨"
+    if regime_text.strip():
+        return "🔎"
+    return "❔"
+
 
 # --- CONFIGURATION & STYLING ---
 st.set_page_config(page_title="Alpha Risk Engine (ARE)", layout="wide")
@@ -272,8 +296,8 @@ with tab3:
 
     st.header("Strategic Scenario Analysis & Contagion Audit")
     st.markdown("""
-    **Analytical Framework:** We utilize the **Conditional Linear Regression** method. 
-    By shocking a 'Primary Factor,' we estimate the impact on all other assets using their 
+    **Analytical Framework:** We utilize the **Conditional Linear Regression** method.
+    By shocking a 'Primary Factor,' we estimate the impact on all other assets using their
     **Robust Correlation** sensitivities.
     """)
 
@@ -361,14 +385,14 @@ with tab3:
     st.subheader("Consultant's Scenario Audit")
     if scenario_type.startswith("AI Infrastructure"):
         st.info(f"""
-        **Skeptic's Hedge Verified:** Because your portfolio holds **CLSE** (Long/Short) and **Gold**, 
-        the contagion from a tech crash is dampened. While {target_asset} drops 35%, 
+        **Skeptic's Hedge Verified:** Because your portfolio holds **CLSE** (Long/Short) and **Gold**,
+        the contagion from a tech crash is dampened. While {target_asset} drops 35%,
         the portfolio only loses {abs(total_portfolio_impact):.2%}, demonstrating structural resilience.
         """)
     elif scenario_type.startswith("Geopolitical"):
         st.success(f"""
-        **Crisis Alpha:** A spike in Gold serves as a positive tail-wind. 
-        Note that **REMD.NE** (Emerging Markets) may show negative contagion due to risk-off sentiment 
+        **Crisis Alpha:** A spike in Gold serves as a positive tail-wind.
+        Note that **REMD.NE** (Emerging Markets) may show negative contagion due to risk-off sentiment
         in Taiwan/Korea foundries.
         """)
 
@@ -376,7 +400,7 @@ with tab3:
 with tab4:
     st.header("Institutional Rebalancing: Black-Litterman Model")
     st.markdown("""
-    **Analytical Framework:** We blend Market Equilibrium (Priors) with your specific Analyst Views (the Alpha). 
+    **Analytical Framework:** We blend Market Equilibrium (Priors) with your specific Analyst Views (the Alpha).
     This prevents the model from over-allocating based on noisy historical data.
     """)
 
@@ -480,7 +504,7 @@ with tab4:
 with tab5:
     st.header("Efficient Frontier Analytics")
     st.markdown("""
-    **Consultant's View:** Assets below the white line are 'Dominated.' 
+    **Consultant's View:** Assets below the white line are 'Dominated.'
     Your Optimized Portfolio (The Star) is positioned to maximize return for your chosen **Risk Aversion (λ=3)**.
     """)
 
@@ -496,7 +520,7 @@ with tab5:
 with tab6:
     st.header("Global Currency Exposure Audit")
     st.markdown("""
-    **Analytical Note:** This portfolio utilizes an **Unhedged Strategy**. 
+    **Analytical Note:** This portfolio utilizes an **Unhedged Strategy**.
     We capture the 'Currency Alpha' during periods of CAD weakness.
     """)
 
@@ -553,9 +577,9 @@ with tab6:
                   f"${nav_change:+,.2f} CAD")
 
         st.write(f"""
-        **Consultant's Comment:** 
-        A {fx_move}% rise in the USD increases your total FHSA value by ${abs(nav_change):,.2f} 
-        regardless of stock price movement. This provides a 'Natural Hedge' if Canadian 
+        **Consultant's Comment:**
+        A {fx_move}% rise in the USD increases your total FHSA value by ${abs(nav_change):,.2f}
+        regardless of stock price movement. This provides a 'Natural Hedge' if Canadian
         equities (**XDIV.TO**) drop due to domestic economic weakness.
         """)
 
@@ -573,7 +597,7 @@ with tab6:
 with tab7:
     st.header("Relative Strength Audit: Application vs. Infrastructure")
     st.markdown("""
-    **Analytical Thesis:** Are we at a 'Semiconductor Peak'? 
+    **Analytical Thesis:** Are we at a 'Semiconductor Peak'?
     We compare the **Infrastructure (XCHP)** to the **Transaction Layer (FINN.NE)**.
     """)
 
@@ -627,9 +651,9 @@ with tab7:
 with tab8:
     st.header("Institutional Relative Strength (RS) Audit")
     st.markdown("""
-    **Objective:** Identify 'Institutional Footprints'. 
+    **Objective:** Identify 'Institutional Footprints'.
     We look for assets with **RS Score > 0** (Outperforming) and **Positive Slope** (Accumulating).
-    
+
     Studies show the top 20% of RS stocks continue to outperform over the following 3–6 months (Post-Earnings Drift).
     """)
 
@@ -842,7 +866,7 @@ def fetch_premarket_and_gap(tickers):
                 prev_close = hist[t].iloc[-2]
 
                 # 2. Today's First Price (Pre-market start or Open)
-                today_data = data['Adj Close'][t].dropna()
+                today_data = data['Close'][t].dropna()
 
                 # Pre-market price (last point)
                 current_extended = today_data.iloc[-1]
@@ -860,7 +884,7 @@ def fetch_premarket_and_gap(tickers):
             except Exception:
                 continue
 
-        return pd.DataFrame(results) if results else None
+        return pd.DataFrame(results).sort_values("Overnight Gap (%)", ascending=False) if results else None
     except Exception:
         return None
 
@@ -868,7 +892,7 @@ def fetch_premarket_and_gap(tickers):
 with tab9:
     st.header("🎛️ Live Market Execution Terminal")
     st.markdown("""
-    **Objective:** Real-time monitoring of Price vs. Benchmark. 
+    **Objective:** Real-time monitoring of Price vs. Benchmark.
     Use this to identify 'Slippage' and 'Relative Strength' during intraday surges.
     """)
 
@@ -923,9 +947,10 @@ with tab9:
                 f"**Last Update:** {datetime.datetime.now().strftime('%H:%M:%S')} EST")
 
             # 4. Display Professional Price Table
+            
             df_live = pd.DataFrame(price_report).sort_values(
                 by="Day Change (%)", ascending=False)
-
+            df_live.dropna(subset=['Current Price'], inplace=True)
             def style_live_report(val):
                 if isinstance(val, float):
                     color = 'green' if val > 0 else 'red'
@@ -965,84 +990,136 @@ with tab9:
             highlight_gaps, subset=['Overnight Gap (%)']))
     else:
         st.info("Click 'Refresh Pre-Market/Gap Audit' to load gap analysis.")
-        
+
     # --- Risk Alert Portal ---
     st.divider()
     st.subheader("Risk Alert Portal")
-    
-    # Display Monitor List
-    st.write(f"**Total Tickers Monitored:** {len(monitor_list)}")
+    st.markdown(
+        "**Regime Icon Legend:** 🟢 Bullish | 🔴 Bearish | 🟡 Neutral | ⚠️ Unstable | 🚨 Tail Risk | 🔎 Other"
+    )
     st.write(f"**Monitor List:** {', '.join(sorted(monitor_list))}")
-    
-    col1, col2 = st.columns(2)
-    with col1:
-        alert_ticker = st.selectbox(
-            "Select Ticker for Regime Scan",
-            options=sorted(set(monitor_list)),
-            index=sorted(set(monitor_list)).index(selected_benchmark)
-            if selected_benchmark in monitor_list else 0,
-        )
-        if st.button("Run Risk Alert Scan"):
-            import io
-            from contextlib import redirect_stdout
 
+    alert_ticker = st.selectbox(
+        "Select Ticker for Regime Scan",
+        options=sorted(set(monitor_list)),
+        index=sorted(set(monitor_list)).index(selected_benchmark)
+        if selected_benchmark in monitor_list else 0,
+    )
+    if st.button("Run Risk Alert Scan"):
+        import io
+        from contextlib import redirect_stdout
+
+        output_buffer = io.StringIO()
+        with redirect_stdout(output_buffer):
+            scan_market(alert_ticker)
+        scanner_output = output_buffer.getvalue()
+        # st.text(scanner_output)
+
+        parsed = {
+            "Price": "N/A",
+            "Hurst": "N/A",
+            "Tail Index": "N/A",
+            "Intraday Vol": "N/A",
+            "Regime": "UNKNOWN",
+            "Verdict": "N/A",
+            "Suggestion": "N/A",
+            "Reason": "N/A"
+        }
+        for line in scanner_output.strip().split('\n'):
+            if "RESULT REGIME:" in line:
+                parsed["Regime"] = line.split("RESULT REGIME:")[1].strip()
+            elif "Hurst (Trend):" in line:
+                parsed["Hurst"] = line.split("Hurst (Trend):")[1].strip()
+            elif "Tail Index:" in line:
+                parsed["Tail Index"] = line.split("Tail Index:")[1].strip()
+            elif "Price:" in line and "Current Price" not in line:
+                parsed["Price"] = line.split("Price:")[1].strip()
+            elif "Intraday Vol" in line:
+                parsed["Intraday Vol"] = line.split("Intraday Vol")[1].strip()
+            elif "VERDICT:" in line:
+                parsed["Verdict"] = line.split("VERDICT:")[1].strip()
+            elif "SUGGESTION:" in line:
+                parsed["Suggestion"] = line.split("SUGGESTION:")[1].strip()
+            elif "REASON:" in line:
+                parsed["Reason"] = line.split("REASON:")[1].strip()
+        st.write(f"**Price:** {parsed['Price']}")
+        st.write(f"**Hurst (Trend):** {parsed['Hurst']}")
+        st.write(f"**Tail Index:** {parsed['Tail Index']}")
+        st.write(f"**Intraday Volatility:** {parsed['Intraday Vol']}")
+        st.markdown("**Judgment & Suggestion**")
+        st.write(
+            f"**Regime:** {get_regime_icon(parsed['Regime'])} {parsed['Regime']}")
+        st.write(f"**Verdict:** {parsed['Verdict']}")
+        st.write(f"**Suggestion:** {parsed['Suggestion']}")
+        st.write(f"**Reason:** {parsed['Reason']}")
+
+    st.divider()
+    st.subheader("Scan All Tickers & List Signals")
+    if st.button("Scan All Tickers & List Signals"):
+        import io
+        from contextlib import redirect_stdout
+
+        st.info(
+            f"Scanning all {len(monitor_list)} tickers for regime signals...")
+
+        all_signals = []
+        for ticker in sorted(monitor_list):
             output_buffer = io.StringIO()
             with redirect_stdout(output_buffer):
-                scan_now(alert_ticker)
-            st.text(output_buffer.getvalue())
-    
-    with col2:
-        if st.button("Scan All Tickers & List Signals"):
-            import io
-            from contextlib import redirect_stdout
-            
-            st.info(f"Scanning all {len(monitor_list)} tickers for regime signals...")
-            
-            all_signals = []
-            for ticker in sorted(monitor_list):
-                output_buffer = io.StringIO()
-                with redirect_stdout(output_buffer):
-                    try:
-                        scan_now(ticker)
-                    except Exception as e:
-                        print(f"Error scanning {ticker}: {e}")
-                
-                # Parse the output to extract regime signal
-                output = output_buffer.getvalue()
-                lines = output.strip().split('\n')
-                regime = "UNKNOWN"
-                hurst = "N/A"
-                tail_idx = "N/A"
-                price = "N/A"
-                
-                for line in lines:
-                    if "RESULT REGIME:" in line:
-                        regime = line.split("RESULT REGIME:")[1].strip()
-                    elif "Hurst (Trend):" in line:
-                        hurst = line.split("Hurst (Trend):")[1].strip()
-                    elif "Tail Index:" in line:
-                        tail_idx = line.split("Tail Index:")[1].strip()
-                    elif "Current Price:" in line:
-                        price = line.split("Current Price:")[1].strip()
-                
-                all_signals.append({
-                    "Ticker": ticker,
-                    "Price": price,
-                    "Hurst": hurst,
-                    "Tail Index": tail_idx,
-                    "Signal/Regime": regime
-                })
-            
-            # Display signals table
-            df_signals = pd.DataFrame(all_signals).sort_values(by="Signal/Regime")
-            st.subheader("📊 All Risk Alert Signals")
-            st.dataframe(df_signals, hide_index=True, width='stretch')
-            
-            # Summary statistics
-            st.subheader("🎯 Signal Summary")
-            signal_counts = df_signals["Signal/Regime"].value_counts()
-            st.bar_chart(signal_counts)
-        
+                try:
+                    scan_market(ticker)
+                except Exception as e:
+                    print(f"Error scanning {ticker}: {e}")
+
+            # Parse the output to extract regime signal
+            output = output_buffer.getvalue()
+            lines = output.strip().split('\n')
+            regime = "UNKNOWN"
+            hurst = "N/A"
+            tail_idx = "N/A"
+            price = "N/A"
+            verdict = "N/A"
+            suggestion = "N/A"
+            reason = "N/A"
+
+            for line in lines:
+                if "RESULT REGIME:" in line:
+                    regime = line.split("RESULT REGIME:")[1].strip()
+                elif "Hurst (Trend):" in line:
+                    hurst = line.split("Hurst (Trend):")[1].strip()
+                elif "Tail Index:" in line:
+                    tail_idx = line.split("Tail Index:")[1].strip()
+                elif "Price:" in line and "Current Price" not in line:
+                    price = line.split("Price:")[1].strip()
+                elif "VERDICT:" in line:
+                    verdict = line.split("VERDICT:")[1].strip()
+                elif "SUGGESTION:" in line:
+                    suggestion = line.split("SUGGESTION:")[1].strip()
+                elif "REASON:" in line:
+                    reason = line.split("REASON:")[1].strip()
+
+            all_signals.append({
+                "Ticker": ticker,
+                "Price": price,
+                "Hurst": hurst,
+                "Tail Index": tail_idx,
+                "Signal/Regime": f"{regime} {get_regime_icon(regime)}",
+                "Verdict": verdict,
+                "Suggestion": suggestion,
+                "Reason": reason
+            })
+
+        # Display signals table
+        df_signals = pd.DataFrame(all_signals).sort_values(
+            by=["Signal/Regime", "Ticker"])
+        st.subheader("📊 All Risk Alert Signals")
+        st.dataframe(df_signals, hide_index=True, width='stretch')
+
+        # Summary statistics
+        st.subheader("🎯 Signal Summary")
+        signal_counts = df_signals["Signal/Regime"].value_counts()
+        st.bar_chart(signal_counts)
+
     # 5. Tactical Consultant Action
     st.divider()
     st.subheader("Consultant's Intraday Audit")
@@ -1055,7 +1132,7 @@ with tab9:
             "📉 **Liquidation Alert:** Systemic sell-off detected. Monitor KILO.TO for safe-haven decoupling.")
     else:
         st.info("Regime: Normal Intraday Variance. No emergency rebalancing required.")
-        
+
 # --- FOOTER: DECISION LOG ---
 st.divider()
 st.subheader("Decision Log Entry")

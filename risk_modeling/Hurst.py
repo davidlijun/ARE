@@ -4,7 +4,7 @@ import pytz
 import numpy as np
 import pandas as pd
 from ib_insync import *
-from risk_alert import calculate_tail_index, calculate_hurst
+from risk_modeling.mandelbrot import calculate_tail_index, calculate_hurst
 
 
 class MandelbrotRecoveryBot:

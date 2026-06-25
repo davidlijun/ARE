@@ -255,7 +255,7 @@ def compute_judgment(prices, volumes, data_1m, h_val, alpha):
 
 
 def scan_with_judgment(ticker):
-    return scan_now(ticker, show_judgment=True)
+    return scan_market(ticker, show_judgment=True)
 
 # ============================================================================
 # 4. MAIN SCANNER
@@ -299,7 +299,7 @@ def generate_suggestion(regime, judgment, entropy, alpha, h_val, vpin, cvd_slope
     return "🔎 MONITOR", "Metrics are inconclusive. Wait for fractal clarity."
 
 
-def scan_now(ticker, show_judgment=True):
+def scan_market(ticker, show_judgment=True):
     print(f"--- Scanning {ticker} Mandelbrot Status ---")
 
     # Load 1m (Trend) and 1d (Structural Risk)
@@ -388,7 +388,7 @@ if __name__ == "__main__":
     tickers = ["MU", 'GOOG']
     while True:
         for t in tickers:
-            scan_now(t)
+            scan_market(t)
             # scan_with_judgment(t)
         time.sleep(60)  # Wait 1 minute before next scan
 """
